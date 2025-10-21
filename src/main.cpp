@@ -4,22 +4,14 @@
 #include <iostream>
 
 #include <cstdlib>
+#include "settings.h"
 
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]){
 
-{
-
-  // write 5 output files
-
-  for (int i = 0; i < 5; i++)
-
-  {
-
-    writeParaviewOutput(i);
-
-  }
-
+  Settings settings;
+  settings.loadFromFile("parameters.txt");
+  settings.printSettings();
 
   return EXIT_SUCCESS;
 
