@@ -1,4 +1,4 @@
-#include "settings.h"
+#include "settings.hpp"
 
 #include <fstream> // for file operations
 #include <iostream> // for cout

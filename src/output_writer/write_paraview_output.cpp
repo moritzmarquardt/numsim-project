@@ -1,19 +1,13 @@
-#include "output_writer/write_paraview_output.h"
-
+#include "output_writer/write_paraview_output.hpp"
 
 #include <vtkSmartPointer.h>
-
 #include <vtkImageData.h>
-
 #include <vtkXMLImageDataWriter.h>
-
 #include <vtkDoubleArray.h>
-
 #include <vtkPointData.h>
 
 
 #include <cstdlib>
-
 #include <iostream>
 
 

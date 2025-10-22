@@ -6,8 +6,14 @@ project(numsim)
 # Specify the name of the executable (${PROJECT_NAME} which is equal to what was set in the project() command).
 # Also specify the source files.
 add_executable(${PROJECT_NAME}
-   main.cpp
-   output_writer/write_paraview_output.cpp
+    main.cpp
+    output_writer/write_paraview_output.cpp
+    discretisation/staggeredGrid.cpp
+    discretisation/discretization.cpp
+    discretisation/centralDifferences.cpp
+    discretisation/donorCell.cpp
+    storage/array2D.cpp
+    storage/FieldVariable.cpp
 )
 
 # Add the project directory to include directories, to be able to include all project header files from anywhere
