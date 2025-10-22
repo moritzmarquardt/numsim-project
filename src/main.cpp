@@ -14,9 +14,19 @@ int main(int argc, char *argv[]){
 
   myArray(0,0) = 7.0;
   myArray(1,0) = 2.0;
-  std::cout << "Array values:" << myArray(0,0) << "marquis penis" << myArray(1,1)<< std::endl;
+  std::cout << "Array values (selected): " << myArray(0,0) << " marquispenis " << myArray(1,1) << std::endl;
 
   std::array<int,2> size = myArray.size();
+
+  // iterate over all elements and print them
+  for(int j = 0; j < size[1]; ++j){
+    for(int i = 0; i < size[0]; ++i){
+      std::cout << "myArray(" << i << "," << j << ") = " << myArray(i,j) << std::endl;
+      myArray(i,j) = i + j;
+      std::cout << "myArray(" << i << "," << j << ") = " << myArray(i,j) << std::endl;
+    }
+  }
+
 
   return EXIT_SUCCESS;
 
