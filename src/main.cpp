@@ -9,9 +9,13 @@
 
 int main(int argc, char *argv[]){
 
-  Settings settings;
-  settings.loadFromFile("parameters.txt");
-  settings.printSettings();
+  for (int i = 0; i < 5; i++)
+
+  {
+
+    writeParaviewOutput(i);
+
+  }
 
   return EXIT_SUCCESS;
 

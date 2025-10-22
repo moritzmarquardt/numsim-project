@@ -14,7 +14,7 @@
 - make sure the build/ folder is empty and exists
 - run ```cmake ..``` from build/ folder: This should create the Makefile in build/ folder
 - run ```make install``` from build/ folder: This compiles the code and creates the ./numsim executable in build/ folder
-- run this executable ```.numsim/``` from build/ folder:
+- run this executable ```./numsim``` from build/ folder:
 this should create the outputs in build/out/
 
 
