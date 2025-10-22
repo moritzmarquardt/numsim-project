@@ -12,7 +12,7 @@ add_executable(${PROJECT_NAME}
     discretisation/discretization.cpp
     discretisation/centralDifferences.cpp
     discretisation/donorCell.cpp
-    storage/array2D.cpp
+    storage/array2d.cpp
     storage/FieldVariable.cpp
 )
 
