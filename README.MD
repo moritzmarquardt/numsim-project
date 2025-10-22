@@ -5,8 +5,8 @@
 - ```sudo apt install libvtk9-dev```
 - ```sudo apt install qtbase5-dev qttools5-dev qttools5-dev-tools qt5-qmake libqt5opengl5-dev```
 - ```sudo apt install openjdk-17-jdk```
-- server jdk path to .bashrc
-- lib path to .profile at the end via sudo
+- server jdk path to .bashrc : export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/jvm/java-17-openjdk-amd64/lib:/usr/lib/jvm/java-17-openjdk-amd64/lib/server
+- lib path to .profile at the end via sudo nano (same path) -> might be redundant
 - paraview installation via https://www.paraview.org/download/ 
 
 
