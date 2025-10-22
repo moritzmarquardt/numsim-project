@@ -14,7 +14,7 @@ int main(int argc, char *argv[]){
 
   myArray(0,0) = 7.0;
   myArray(1,0) = 2.0;
-  std::cout << "Array values (selected): " << myArray(0,0) << " marquispenis " << myArray(1,1) << std::endl;
+  std::cout << "Array values (selected): " << myArray(0,0) << " marquise " << myArray(1,1) << std::endl;
 
   std::array<int,2> size = myArray.size();
 
