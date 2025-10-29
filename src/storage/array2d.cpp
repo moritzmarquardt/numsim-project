@@ -25,7 +25,7 @@ double &Array2D::operator()(int i, int j)
   assert(0 <= j && j < size_[1]);
   assert(j*size_[0] + i < (int)data_.size());
 
-  return data_[index];
+  return data_[index]; // das gibtn ne referenz zurück, die man dann ändern kann
 }
 
 double Array2D::operator()(int i, int j) const
@@ -37,7 +37,7 @@ double Array2D::operator()(int i, int j) const
   assert(0 <= j && j < size_[1]);
   assert(j*size_[0] + i < (int)data_.size());
 
-  return data_[index];
+  return data_[index]; // das gibt den value direkt zurück
 }
 
 void Array2D::setToZero() {

@@ -24,6 +24,7 @@ double FieldVariable::interpolateAt(double x, double y) const {
     assert(0.0 <= y && y < size_[1]*meshWidth_[1]);
 
     // Find the indicies i and j of the corresponding cells, we are looking for the bottom left point of the cell
+    // origin is the cartesian coordinates of the field values in the (0,0) cell.
     const int i = static_cast<int>((x - origin_[0]) / meshWidth_[0]);
     const int j = static_cast<int>((y - origin_[1]) / meshWidth_[1]);
 
