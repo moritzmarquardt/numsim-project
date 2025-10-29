@@ -1,6 +1,6 @@
 #pragma once
 
-#include "output_writer/output_writer.h"
+#include "output_writer/output_writer.hpp"
 
 #include <vtkSmartPointer.h>
 #include <vtkXMLImageDataWriter.h>

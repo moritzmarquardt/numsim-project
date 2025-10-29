@@ -1,4 +1,4 @@
-#include "output_writer/output_writer_paraview.h"
+#include "output_writer/output_writer_paraview.hpp"
 
 #include <vtkImageData.h>
 #include <vtkDoubleArray.h>

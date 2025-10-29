@@ -45,25 +45,6 @@ public:
      */
     virtual double computeDuvDy (int i, int j) const;
 
-    /**
-     * Compute the derivative of u*T in x-direction
-     * 
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return derivative of u*v in y-direction
-     */
-    virtual double computeDuTDx (int i, int j) const;
-
-    /**
-     * Compute the derivative of v*T in y-direction
-     * 
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return derivative of u*v in y-direction
-     */
-    virtual double computeDvTDy (int i, int j) const;
-
 private:
     double alpha_;
-    double gamma_;
 };

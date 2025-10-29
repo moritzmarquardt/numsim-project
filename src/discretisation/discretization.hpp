@@ -54,24 +54,6 @@ public:
      * @return derivative of u*v in y-direction
      */
     virtual double computeDuvDy(int i, int j) const = 0;
-
- /**
-     * Compute the derivative of u*T in x-direction
-     *
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return derivative of u*T in x-direction
-     */
-    virtual double computeDuTDx(int i, int j) const = 0;
-
-     /**
-     * Compute the derivative of v*T in y-direction
-     *
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return derivative of v*T in y-direction
-     */
-    virtual double computeDvTDy(int i, int j) const = 0;
     
 
     /**
@@ -82,24 +64,6 @@ public:
      * @return derivative of p in y-direction
      */
     virtual double computeDpDy(int i, int j) const;
-
-    /**
-     * Compute the second derivative of T in x-direction
-     *
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return second derivative of T in y-direction
-     */
-    virtual double computeD2TDx2(int i, int j) const;
-
-    /**
-     * Compute the second derivative of T in y-direction
-     *
-     * @param i index in x-direction
-     * @param j index in y-direction
-     * @return second derivative of T in y-direction
-     */
-    virtual double computeD2TDy2(int i, int j) const;
 
     /**
      * Compute the second derivative of u in x-direction
