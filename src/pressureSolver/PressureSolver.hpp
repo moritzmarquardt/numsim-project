@@ -1,6 +1,7 @@
 #pragma once
 
-#include "discretization.hpp"
+#include "discretisation/discretization.hpp"
+#include <memory>
 
 class PressureSolver {
     public:
@@ -10,7 +11,13 @@ class PressureSolver {
     protected:
         void setBoundaryValues();
 
+        virtual void computeResidualNorm();
+
+        double residualNorm();
+
         std::shared_ptr<Discretization> discretization_;
         double epsilon_;
         int maximumNumberOfIterations_;
+        double residualNorm_;
+        int numberOfIterations_;
 };
