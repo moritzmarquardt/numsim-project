@@ -39,6 +39,27 @@ void Computation::runSimulation() {
     double currentTime = 0.0;
     int iterationCount = 0;
 
+    while (currentTime < settings_.endTime) {
+        computeTimeStepWidth();
+
+        if (currentTime + dt_ > settings_.endTime) {
+            dt_ = settings_.endTime - currentTime;
+        }
+
+        applyBoundaryValues();
+        computePreliminaryVelocities();
+        computeRightHandSide();
+        computePressure();
+        computeVelocities();
+
+        currentTime += dt_;
+        iterationCount++;
+
+        outputWriterParaview_->writeFile(currentTime);
+        outputWriterText_->writeFile(currentTime);
+        
+    }
+
     
 }
 
@@ -124,5 +145,21 @@ void Computation::computeVelocities() {
 
 void Computation::computeTimeStepWidth() {
     // compute time step width based on CFL condition
+    double dx = discretization_->dx();
+    double dy = discretization_->dy();
 
+    double dx2 = dx * dx;
+    double dy2 = dy * dy;  
+
+    double dt_diff_cond = 0.5 * settings_.re * (dx2 * dy2) / (dx2 + dy2);
+    double dt_conv_cond = std::min(dx / discretization_->u().computeMaxAbs(), dy / discretization_->v().computeMaxAbs());
+
+    double dt_prelim = settings_.tau * std::min(dt_diff_cond, dt_conv_cond);
+
+    if (dt_prelim < settings_.maximumDt) {
+        dt_ = dt_prelim;
+    } else {
+        dt_ = settings_.maximumDt;
+        std::cout << "Warning: Time step width limited by maximumDt!" << std::endl;
+    }
 }

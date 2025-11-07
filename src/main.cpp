@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-
+  
   if (argc < 2)
   {
     std::cerr << "Usage: " << (argc > 0 ? argv[0] : "numsim") << " <settings-file>" << std::endl;
@@ -25,24 +25,9 @@ int main(int argc, char *argv[])
     }
   }
 
-  Array2D myArray = Array2D({2, 2});
-
-  myArray(0, 0) = 7.0;
-  myArray(1, 0) = 2.0;
-  std::cout << "Array values (selected): " << myArray(0, 0) << " marquise " << myArray(1, 1) << std::endl;
-
-  std::array<int, 2> size = myArray.size();
-
-  // iterate over all elements and print them
-  for (int j = 0; j < size[1]; ++j)
-  {
-    for (int i = 0; i < size[0]; ++i)
-    {
-      std::cout << "myArray(" << i << "," << j << ") = " << myArray(i, j) << std::endl;
-      myArray(i, j) = i + j;
-      std::cout << "myArray(" << i << "," << j << ") = " << myArray(i, j) << std::endl;
-    }
-  }
+  Computation computation;
+  computation.initialize(argc, argv);
+  computation.runSimulation();
 
   return EXIT_SUCCESS;
 }
