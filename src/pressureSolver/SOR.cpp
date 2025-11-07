@@ -23,6 +23,7 @@ void SOR::solve() {
             }
         }
         iter++;
+        setBoundaryValues();
         computeResidualNorm();
     } while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2);    
 };  

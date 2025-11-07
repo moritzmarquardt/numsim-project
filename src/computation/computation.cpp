@@ -34,6 +34,11 @@ void Computation::initialize(int argc, char *argv[]) {
 }
 
 void Computation::runSimulation() {
+    applyInitialBoundaryValues();
+
+    double currentTime = 0.0;
+    int iterationCount = 0;
+
     
 }
 
@@ -67,6 +72,57 @@ void Computation::applyBoundaryValues() {
     }
 }
 
+void Computation::computePreliminaryVelocities() {
+    // calc F and G (leave out boundaries)
+    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() - 1; i++) {
+        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd(); j++) {
+            double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j))
+            - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
+            discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
+        }
+    }
 
+    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd(); i++) {
+        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd() - 1; j++) {
+            double B_ij = 1 / settings_.re * ( discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j))
+            - discretization_->computeDuvDx(i,j) - discretization_->computeDv2Dy(i,j) + settings_.g[1];
+            discretization_->f(i,j) = discretization_->v(i,j) + B_ij * dt_;
+        }
+    }
+}
 
+void Computation::computeRightHandSide() {
+    // compute rhs of pressure equation
+    for (int i = discretization_->pIBegin(); i < discretization_->pIEnd(); i++) {
+        for (int j = discretization_->pJBegin(); j < discretization_->pJEnd(); j++) {
+            discretization_->rhs(i,j) = ( (discretization_->f(i,j) - discretization_->f(i-1,j)) / discretization_->dx()
+                                        + (discretization_->g(i,j) - discretization_->g(i,j-1)) / discretization_->dy() ) / dt_;
+        }
+    }
 
+}
+
+void Computation::computePressure() {
+    // solve pressure equation
+    pressureSolver_->solve();
+}
+
+void Computation::computeVelocities() {
+    // update velocities u and v using F, G, and pressure p
+    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() - 1; i++) {
+        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd(); j++) {
+            discretization_->u(i,j) = discretization_->f(i,j) - discretization_->computeDpDx(i,j) * dt_;
+        }
+    }
+
+    for (int i = discretization_->vIBegin(); i < discretization_->vIEnd(); i++) {
+        for (int j = discretization_->vJBegin(); j < discretization_->vJEnd() - 1; j++) {
+            discretization_->v(i,j) = discretization_->g(i,j) - discretization_->computeDpDy(i,j) * dt_; 
+        }
+    }
+}   
+
+void Computation::computeTimeStepWidth() {
+    // compute time step width based on CFL condition
+
+}
