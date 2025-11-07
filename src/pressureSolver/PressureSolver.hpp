@@ -1,6 +1,6 @@
 #pragma once
 
-#include "discretisation/discretization.hpp"
+#include "discretization/discretization.hpp"
 #include <memory>
 
 class PressureSolver {

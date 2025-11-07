@@ -8,10 +8,10 @@ project(numsim)
 add_executable(${PROJECT_NAME}
     main.cpp
     output_writer/write_paraview_output.cpp
-    discretisation/staggeredGrid.cpp
-    discretisation/discretization.cpp
-    discretisation/centralDifferences.cpp
-    discretisation/donorCell.cpp
+    discretization/staggeredGrid.cpp
+    discretization/discretization.cpp
+    discretization/centralDifferences.cpp
+    discretization/donorCell.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
 )

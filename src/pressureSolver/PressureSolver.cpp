@@ -1,5 +1,5 @@
 #include "pressureSolver/PressureSolver.hpp"
-#include "discretisation/discretization.hpp"
+#include "discretization/discretization.hpp"
 #include <cmath>
 #include <iostream>
 
