@@ -5,6 +5,7 @@
 
 void Computation::initialize(int argc, char *argv[]) {
     settings_.loadFromFile(argv[1]);
+    settings_.printSettings();
 
     // calculate mesh width
     meshWidth_[0] = settings_.physicalSize[0] / settings_.nCells[0];
@@ -57,6 +58,8 @@ void Computation::runSimulation() {
 
         outputWriterParaview_->writeFile(currentTime);
         outputWriterText_->writeFile(currentTime);
+
+        std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
         
     }
 

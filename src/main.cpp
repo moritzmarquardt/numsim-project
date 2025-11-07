@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 {
-  
+
   if (argc < 2)
   {
     std::cerr << "Usage: " << (argc > 0 ? argv[0] : "numsim") << " <settings-file>" << std::endl;
@@ -26,7 +26,9 @@ int main(int argc, char *argv[])
   }
 
   Computation computation;
+  std::cout << "Init..." << std::endl;
   computation.initialize(argc, argv);
+  std::cout << "Initialization done. Running simulation..." << std::endl;
   computation.runSimulation();
 
   return EXIT_SUCCESS;
