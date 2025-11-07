@@ -26,7 +26,6 @@ private:
     void computeRightHandSide();
     void computePressure();
     void computeVelocities();
-    void computeTimeStepWidth();
 
     Settings settings_;
     std::shared_ptr<Discretization> discretization_;
