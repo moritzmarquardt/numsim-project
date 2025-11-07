@@ -7,11 +7,19 @@ project(numsim)
 # Also specify the source files.
 add_executable(${PROJECT_NAME}
     main.cpp
+    settings.cpp
     output_writer/write_paraview_output.cpp
+    output_writer/output_writer.cpp
+    output_writer/output_writer_paraview.cpp
+    output_writer/output_writer_text.cpp
     discretization/staggeredGrid.cpp
     discretization/discretization.cpp
     discretization/centralDifferences.cpp
     discretization/donorCell.cpp
+    computation/computation.cpp
+    pressureSolver/PressureSolver.cpp
+    pressureSolver/GaussSeidel.cpp
+    pressureSolver/SOR.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
 )
