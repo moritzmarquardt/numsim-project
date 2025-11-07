@@ -46,18 +46,28 @@ void Computation::runSimulation() {
         if (currentTime + dt_ > settings_.endTime) {
             dt_ = settings_.endTime - currentTime;
         }
+        std::cout << "Computed time step width: " << dt_ << std::endl;
 
         applyBoundaryValues();
+        std::cout << "Applied boundary values." << std::endl;
         computePreliminaryVelocities();
+        std::cout << "Computed preliminary velocities." << std::endl;
         computeRightHandSide();
+        std::cout << "Computed right hand side." << std::endl;
         computePressure();
+        std::cout << "Computed pressure." << std::endl;
         computeVelocities();
+        std::cout << "Computed velocities." << std::endl;
 
         currentTime += dt_;
         iterationCount++;
+        std::cout << "Advanced to time: " << currentTime << std::endl;
+        std::cout << "Completed iteration: " << iterationCount << std::endl;
 
         outputWriterParaview_->writeFile(currentTime);
+        std::cout << "Wrote Paraview output." << std::endl;
         outputWriterText_->writeFile(currentTime);
+        std::cout << "Wrote text output." << std::endl;
 
         std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
         

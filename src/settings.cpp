@@ -8,18 +8,25 @@
  * 
  * @param filename Name of the file to load settings from
  */
-void Settings::loadFromFile(std::string filename){
+void Settings::loadFromFile(std::string filename)
+{
   // open file
   std::ifstream file(filename.c_str(), std::ios::in);
 
   // check if file is open
-  if (!file.is_open()){
+  if (!file.is_open())
+  {
     std::cout << "Could not open parameter file \"" << filename << "\"." << std::endl;
     return;
   }
 
   // loop over lines of file
-  for (int lineNo = 0;; lineNo++){
+  for (int lineNo = 0;; lineNo++)
+  {
+    // check if end of file is reached
+    if (file.eof()) {
+      break;
+    }
     // read line
     std::string line;
     getline(file, line);
@@ -137,10 +144,6 @@ void Settings::loadFromFile(std::string filename){
     else{
       std::cout << "Unknown parameter \"" << parameterName << "\" in line " << lineNo << std::endl;
     }
-
-    // at the end of the file break for loop
-    if (file.eof())
-      break;
   }
 }
 

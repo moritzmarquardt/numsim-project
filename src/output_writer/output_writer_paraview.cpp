@@ -3,6 +3,7 @@
 #include <vtkImageData.h>
 #include <vtkDoubleArray.h>
 #include <vtkPointData.h>
+#include <iostream>
 
 OutputWriterParaview::OutputWriterParaview(std::shared_ptr<Discretization> discretization) :
    OutputWriter(discretization)
@@ -59,6 +60,7 @@ void OutputWriterParaview::writeFile(double currentTime)
     {
       const double x = i*dx;
       const double y = j*dy;
+      
 
       arrayPressure->SetValue(index, discretization_->p().interpolateAt(x,y));
     }
