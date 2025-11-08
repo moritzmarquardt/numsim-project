@@ -18,6 +18,9 @@ void Computation::initialize(int argc, char *argv[]) {
         discretization_ = std::make_shared<CentralDifferences>(settings_.nCells, meshWidth_);
     }
 
+    std::cout << "Created discretization with mesh width dx: " << meshWidth_[0] << ", dy: " << meshWidth_[1] << std::endl;
+    std::cout << "Number of cells in x direction: " << settings_.nCells[0] << ", y direction: " << settings_.nCells[1] << std::endl;
+
     // create pressure solver
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<GaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations);

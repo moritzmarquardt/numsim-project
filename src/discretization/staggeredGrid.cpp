@@ -14,6 +14,9 @@ const std::array<double,2> StaggeredGrid::meshWidth() const {
     return meshWidth_;
 }
 
+/**
+ * get the number of cells in x and y direction. Meant are only real cells, no ghost cells.
+ */
 const std::array<int,2> StaggeredGrid::nCells() const {
     return nCells_;
 }
@@ -74,10 +77,17 @@ double StaggeredGrid::dy() const {
     return meshWidth_[1];
 }
 
+/**
+ * the first index corresponding to a real cell in the field variable u in x direction
+ */
 int StaggeredGrid::uIBegin() const {
     return 1;
 }
 
+/**
+ * the last index corresponding to a real cell in the field variable u in x direction
+ * this is nCells_[0] - 1 because the last real cell in x direction has a boundary value at the right edge, so where the u values are defined.
+ */
 int StaggeredGrid::uIEnd() const {
     return nCells_[0];
 }
