@@ -1,8 +1,7 @@
 #include "SOR.hpp"
 #include <iostream>
 
-SOR::SOR(std::shared_ptr<Discretization> discretization,  
-        double epsilon, int maximumNumberOfIterations, double omega)
+SOR::SOR(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, double omega)
         : PressureSolver(discretization, epsilon, maximumNumberOfIterations), 
         omega_(omega) {}
 
@@ -13,17 +12,21 @@ void SOR::solve() {
     const double eps_2 = epsilon_ * epsilon_;
 
     int iter = 0;
-    do {
-        for (int i = discretization_->pIBegin(); i < discretization_->pIEnd(); i++) {
-            for (int j = discretization_->pJBegin(); j < discretization_->pJEnd(); j++) {
+
+    computeResidualNorm();
+
+    while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2) {
+        iter++;
+        for (int i = discretization_->pIBegin(); i < discretization_->pIEnd() + 1; i++) {
+            for (int j = discretization_->pJBegin(); j < discretization_->pJEnd() + 1; j++) {
                 double ersterTerm = (discretization_->p(i+1,j) + discretization_->p(i-1,j)) / dx2;
                 double zweiterTerm = (discretization_->p(i,j+1) + discretization_->p(i,j-1)) / dy2;
                 discretization_->p(i,j) = (1 - omega_)* discretization_->p(i,j) + 
                 omega_ * lek * (ersterTerm + zweiterTerm - discretization_->rhs(i,j));
             }
         }
-        iter++;
         setBoundaryValues();
         computeResidualNorm();
-    } while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2);    
+    };
+    this->numberOfIterations_ += iter;
 };  

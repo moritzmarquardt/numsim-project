@@ -30,7 +30,6 @@ double DonorCell::computeDv2Dy(int i, int j) const {
 }
 
 double DonorCell::computeDuvDx(int i, int j) const {
-    // CONVENTION: DIRECTION_POSITION
     const double u_top_sum = (u(i,j) + u(i,j+1)) / 2.0;
     const double v_right_sum = (v(i,j) + v(i+1,j)) / 2.0;
     const double u_top_left_sum = (u(i-1,j) + u(i-1,j+1)) / 2.0;
@@ -45,15 +44,15 @@ double DonorCell::computeDuvDx(int i, int j) const {
 }
 
 double DonorCell::computeDuvDy(int i, int j) const {
-    const double v_right_sum = (v(i,j) + v(i+1,j)) / 2.0;
-    const double u_top_sum = (u(i,j) + u(i,j+1)) / 2.0;
+    const double v_top_right_sum = (v(i,j) + v(i+1,j)) / 2.0;
+    const double u_top_right_sum = (u(i,j) + u(i,j+1)) / 2.0;
     const double v_right_bottom_sum = (v(i,j-1) + v(i+1,j-1)) / 2.0;
-    const double u_bottom_sum = (u(i,j-1) + u(i,j)) / 2.0;
+    const double u_bottom_right_sum = (u(i,j-1) + u(i,j)) / 2.0;
     const double u_top_diff = (u(i,j) - u(i,j+1)) / 2.0;
     const double u_bottom_diff = (u(i,j-1) - u(i,j)) / 2.0;
 
-    const double cd_term = (v_right_sum*u_top_sum - v_right_bottom_sum*u_bottom_sum) / dy();
-    const double donor_term = (std::fabs(v_right_sum) * u_top_diff - std::fabs(v_right_bottom_sum) * u_bottom_diff) / dy();
+    const double cd_term = (v_top_right_sum*u_top_right_sum - v_right_bottom_sum*u_bottom_right_sum) / dy();
+    const double donor_term = (std::fabs(v_top_right_sum) * u_top_diff - std::fabs(v_right_bottom_sum) * u_bottom_diff) / dy();
 
     return cd_term + alpha_ * donor_term;
 }

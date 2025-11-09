@@ -43,7 +43,7 @@ void Computation::runSimulation() {
     double currentTime = 0.0;
     int iterationCount = 0;
 
-    while (currentTime < settings_.endTime && iterationCount < 10000) {
+    while (currentTime < settings_.endTime && iterationCount < 10) {
         computeTimeStepWidth();
 
         if (currentTime + dt_ > settings_.endTime) {
@@ -54,10 +54,10 @@ void Computation::runSimulation() {
         applyBoundaryValues();
         std::cout << "Applied boundary values." << std::endl;
         // print current u and v for debugging
-        // std::cout << "Current u field:" << std::endl;
-        // discretization_->u().printAsArray();
-        // std::cout << "Current v field:" << std::endl;
-        // discretization_->v().printAsArray();
+        std::cout << "Current u field:" << std::endl;
+        discretization_->u().printAsArray();
+        std::cout << "Current v field:" << std::endl;
+        discretization_->v().printAsArray();
         computePreliminaryVelocities();
         std::cout << "Computed preliminary velocities." << std::endl;
         computeRightHandSide();
@@ -87,7 +87,7 @@ void Computation::runSimulation() {
 void Computation::applyInitialBoundaryValues() {
     // Apply initial boundary conditions for u, v, f, g
     // u and f lay at the right side of a cell, so the left boundary is at index uIBegin() - 1 and the right boundary at uIEnd() + 1
-    for (int j = discretization_->uJBegin(); j < discretization_->uJEnd() + 1; j++) {
+    for (int j = discretization_->uJBegin()-1; j < discretization_->uJEnd() + 2; j++) {
         // go through all j indices, that have real cells for u.
         const int i_left_bc = discretization_->uIBegin() - 1;
         const int i_right_bc = discretization_->uIEnd() + 1;
@@ -122,7 +122,7 @@ void Computation::applyBoundaryValues() {
         discretization_->u(i,j_bottom_bc) = 2 * settings_.dirichletBcBottom[0] - discretization_->u(i,j_bottom_inside);  // bottom
         discretization_->u(i,j_top_bc) = 2 * settings_.dirichletBcTop[0] - discretization_->u(i,j_top_inside);  // top
     }
-    for (int j = discretization_->vJBegin(); j < discretization_->vJEnd() + 1; j++) {
+    for (int j = discretization_->vJBegin()-1; j < discretization_->vJEnd() + 2; j++) {
         // go through all j indices.
         const int i_left_bc = discretization_->vIBegin() - 1;
         const int i_left_inside = discretization_->vIBegin();
