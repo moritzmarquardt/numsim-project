@@ -43,7 +43,15 @@ void Computation::runSimulation() {
     double currentTime = 0.0;
     int iterationCount = 0;
 
-    while (currentTime < settings_.endTime && iterationCount < 10) {
+    while (currentTime < settings_.endTime) {
+        applyBoundaryValues();
+        std::cout << "Applied boundary values." << std::endl;
+        // print current u and v for debugging
+        // std::cout << "Current u field:" << std::endl;
+        // discretization_->u().printAsArray();
+        // std::cout << "Current v field:" << std::endl;
+        // discretization_->v().printAsArray();
+
         computeTimeStepWidth();
 
         if (currentTime + dt_ > settings_.endTime) {
@@ -51,13 +59,7 @@ void Computation::runSimulation() {
         }
         std::cout << "Computed time step width: " << dt_ << std::endl;
 
-        applyBoundaryValues();
-        std::cout << "Applied boundary values." << std::endl;
-        // print current u and v for debugging
-        std::cout << "Current u field:" << std::endl;
-        discretization_->u().printAsArray();
-        std::cout << "Current v field:" << std::endl;
-        discretization_->v().printAsArray();
+
         computePreliminaryVelocities();
         std::cout << "Computed preliminary velocities." << std::endl;
         computeRightHandSide();
@@ -87,7 +89,7 @@ void Computation::runSimulation() {
 void Computation::applyInitialBoundaryValues() {
     // Apply initial boundary conditions for u, v, f, g
     // u and f lay at the right side of a cell, so the left boundary is at index uIBegin() - 1 and the right boundary at uIEnd() + 1
-    for (int j = discretization_->uJBegin()-1; j < discretization_->uJEnd() + 2; j++) {
+    for (int j = discretization_->uJBegin()-1; j <= discretization_->uJEnd() + 1; j++) {
         // go through all j indices, that have real cells for u.
         const int i_left_bc = discretization_->uIBegin() - 1;
         const int i_right_bc = discretization_->uIEnd() + 1;
@@ -97,7 +99,7 @@ void Computation::applyInitialBoundaryValues() {
         discretization_->f(i_left_bc, j) = settings_.dirichletBcLeft[0]; // left
         discretization_->f(i_right_bc, j) = settings_.dirichletBcRight[0]; // right
     }
-    for (int i = discretization_->vIBegin(); i < discretization_->vIEnd() + 1; i++) {
+    for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
         // go through all i indices, that have real cells for v.
         const int j_bottom_bc = discretization_->vJBegin() - 1;
         const int j_top_bc = discretization_->vJEnd() + 1;
@@ -113,7 +115,7 @@ void Computation::applyBoundaryValues() {
     // Apply Dirichlet boundary conditions for u and v
     std::cout << "Applying boundary values for u and v." << std::endl;
     std::cout << "apply top bc from index i " << discretization_->uIBegin() << " to " << discretization_->uIEnd() << std::endl;
-    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() + 1; i++) { //+1 so that it is i <= uIEnd()
+    for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) { 
         // go through all i indices.
         const int j_bottom_bc = discretization_->uJBegin() - 1;
         const int j_bottom_inside = discretization_->uJBegin();
@@ -122,7 +124,7 @@ void Computation::applyBoundaryValues() {
         discretization_->u(i,j_bottom_bc) = 2 * settings_.dirichletBcBottom[0] - discretization_->u(i,j_bottom_inside);  // bottom
         discretization_->u(i,j_top_bc) = 2 * settings_.dirichletBcTop[0] - discretization_->u(i,j_top_inside);  // top
     }
-    for (int j = discretization_->vJBegin()-1; j < discretization_->vJEnd() + 2; j++) {
+    for (int j = discretization_->vJBegin()-1; j <= discretization_->vJEnd() + 1; j++) {
         // go through all j indices.
         const int i_left_bc = discretization_->vIBegin() - 1;
         const int i_left_inside = discretization_->vIBegin();
@@ -135,29 +137,39 @@ void Computation::applyBoundaryValues() {
 
 void Computation::computePreliminaryVelocities() {
     // calc F and G (leave out boundaries)
-    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() + 1; i++) {
-        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd() + 1; j++) {
-            double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j))
-            - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
-            discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
+    for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) {
+        for (int j = discretization_->uJBegin(); j <= discretization_->uJEnd(); j++) {
+            // double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j))
+            // - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
+            // discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
+            const double f_diffusion_term = (discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j)) / settings_.re;
+            const double f_convection_term = discretization_->computeDu2Dx(i,j) + discretization_->computeDuvDy(i,j);
+            discretization_->f(i,j) = discretization_->u(i,j) + dt_*(f_diffusion_term - f_convection_term + settings_.g[0]);
         }
     }
 
-    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() + 1; i++) {
-        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd() + 1; j++) {
-            double B_ij = 1 / settings_.re * ( discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j))
-            - discretization_->computeDuvDx(i,j) - discretization_->computeDv2Dy(i,j) + settings_.g[1];
-            discretization_->g(i,j) = discretization_->v(i,j) + B_ij * dt_;
+    for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
+        for (int j = discretization_->vJBegin(); j <= discretization_->vJEnd(); j++) {
+            // double B_ij = 1 / settings_.re * ( discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j))
+            // - discretization_->computeDuvDx(i,j) - discretization_->computeDv2Dy(i,j) + settings_.g[1];
+            // discretization_->g(i,j) = discretization_->v(i,j) + B_ij * dt_;
+            const double g_diffusion_term = (discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j)) / settings_.re;
+            const double g_convection_term = discretization_->computeDuvDx(i,j) + discretization_->computeDv2Dy(i,j);
+            discretization_->g(i,j) = discretization_->v(i,j) + dt_*(g_diffusion_term - g_convection_term + settings_.g[1]);
         }
     }
 }
 
 void Computation::computeRightHandSide() {
     // compute rhs of pressure equation
-    for (int i = discretization_->pIBegin(); i < discretization_->pIEnd() + 1; i++) {
-        for (int j = discretization_->pJBegin(); j < discretization_->pJEnd() + 1; j++) {
-            discretization_->rhs(i,j) = ( (discretization_->f(i,j) - discretization_->f(i-1,j)) / discretization_->dx()
-                                        + (discretization_->g(i,j) - discretization_->g(i,j-1)) / discretization_->dy() ) / dt_;
+    for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
+        for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
+            // discretization_->rhs(i,j) = ( (discretization_->f(i,j) - discretization_->f(i-1,j)) / discretization_->dx()
+            //                             + (discretization_->g(i,j) - discretization_->g(i,j-1)) / discretization_->dy() ) / dt_;
+            const double F_x = (discretization_->f(i, j) - discretization_->f(i - 1, j)) / discretization_->dx();
+            const double G_y = (discretization_->g(i, j) - discretization_->g(i, j - 1)) / discretization_->dy();
+
+            discretization_->rhs(i, j) = (F_x + G_y) / dt_;
         }
     }
 
@@ -170,14 +182,14 @@ void Computation::computePressure() {
 
 void Computation::computeVelocities() {
     // update velocities u and v using F, G, and pressure p
-    for (int i = discretization_->uIBegin(); i < discretization_->uIEnd() + 1; i++) {
-        for (int j = discretization_->uJBegin(); j < discretization_->uJEnd() + 1; j++) {
+    for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) {
+        for (int j = discretization_->uJBegin(); j <= discretization_->uJEnd(); j++) {
             discretization_->u(i,j) = discretization_->f(i,j) - discretization_->computeDpDx(i,j) * dt_;
         }
     }
 
-    for (int i = discretization_->vIBegin(); i < discretization_->vIEnd() + 1; i++) {
-        for (int j = discretization_->vJBegin(); j < discretization_->vJEnd() + 1; j++) {
+    for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
+        for (int j = discretization_->vJBegin(); j <= discretization_->vJEnd(); j++) {
             discretization_->v(i,j) = discretization_->g(i,j) - discretization_->computeDpDy(i,j) * dt_; 
         }
     }
