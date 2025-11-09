@@ -48,8 +48,8 @@ double FieldVariable::computeMaxAbs() const {
     double max_value = 0.0;
 
     // Go through all points
-    for (int i = 0; i < size_[0]; i++) {
-        for (int j = 1; j < size_[1]-1; j++) {
+    for (int i = 0; i < size_[0] ; i++) {
+        for (int j = 1; j < size_[1] ; j++) {
             double abs_val = fabs((*this)(i,j));
             if (abs_val > max_value) {
                 max_value = abs_val;
@@ -58,4 +58,14 @@ double FieldVariable::computeMaxAbs() const {
     }
 
     return max_value;
+}
+
+void FieldVariable::printAsArray() const {
+    // pretty print the field variable as 2D array
+    for (int j = size_[1] - 1; j >= 0; j--) {
+        for (int i = 0; i < size_[0]; i++) {
+            std::cout << (*this)(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
 }

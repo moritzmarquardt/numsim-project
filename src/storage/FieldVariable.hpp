@@ -1,6 +1,8 @@
 #pragma once
 
 #include "array2d.hpp"
+#include <array>
+#include <iostream>
 
 /** A field variable is the discretization of a scalar function f(x) with x in the computational domain. 
  * More specifically, a scalar value is stored at discrete nodes/points. 
@@ -27,6 +29,11 @@ public:
      * Compute maximum absolute value
      */
     double computeMaxAbs() const;
+
+    /**
+     * Print the field variable as 2D array to the standard output pretty formatted
+     */
+    void printAsArray() const;
 
 private:
     std::array<double,2> origin_; //Cartesian coordinates of the point with (i,j) = (0,0), this is different from (0,0) for the u,v and p field variables. 

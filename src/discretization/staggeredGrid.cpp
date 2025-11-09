@@ -89,7 +89,7 @@ int StaggeredGrid::uIBegin() const {
  * this is nCells_[0] - 1 because the last real cell in x direction has a boundary value at the right edge, so where the u values are defined.
  */
 int StaggeredGrid::uIEnd() const {
-    return nCells_[0];
+    return nCells_[0] - 1;
 }
 
 int StaggeredGrid::uJBegin() const {
@@ -113,7 +113,7 @@ int StaggeredGrid::vJBegin() const {
 }
 
 int StaggeredGrid::vJEnd() const {
-    return nCells_[1];
+    return nCells_[1] - 1; // because v is at the top of the cell and therefore the last cell has a boundary value at the top for v.
 }
 
 int StaggeredGrid::pIBegin() const {
