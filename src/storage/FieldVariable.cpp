@@ -25,10 +25,10 @@ double FieldVariable::interpolateAt(double x, double y) const {
 
     // Find the indicies i and j of the corresponding cells, we are looking for the bottom left point of the cell
     // origin is the cartesian coordinates of the field values in the (0,0) cell.
-    const int i = static_cast<int>((x + origin_[0]) / meshWidth_[0]); // indice of the cell, that contains the lower left corner of the square we want to bilinearily interpolate because the point (x,y) is inside this square
-    const int j = static_cast<int>((y + origin_[1]) / meshWidth_[1]);
+    const int i = static_cast<int>((x - origin_[0]) / meshWidth_[0]); // indice of the cell, that contains the lower left corner of the square we want to bilinearily interpolate because the point (x,y) is inside this square
+    const int j = static_cast<int>((y - origin_[1]) / meshWidth_[1]);
     // THIS MIGHT BE WRONG. WE HAVE TO THINK ABOUT IT
-    std::cout << "i: " << i << ", j: " << j << "for point x: " << x << ", y: " << y << std::endl;
+    //std::cout << "i: " << i << ", j: " << j << "for point x: " << x << ", y: " << y << std::endl;
 
     const double xLeft = origin_[0] + i * meshWidth_[0];
     const double yBottom = origin_[1] + j * meshWidth_[1];
@@ -48,8 +48,8 @@ double FieldVariable::computeMaxAbs() const {
     double max_value = 0.0;
 
     // Go through all points
-    for (int i = 1; i < size_[0]-1; i++) {
-        for (int j = 1; j < size_[1]-1; j++) {
+    for (int i = 0; i < size_[0] ; i++) {
+        for (int j = 1; j < size_[1] ; j++) {
             double abs_val = fabs((*this)(i,j));
             if (abs_val > max_value) {
                 max_value = abs_val;
@@ -58,4 +58,14 @@ double FieldVariable::computeMaxAbs() const {
     }
 
     return max_value;
+}
+
+void FieldVariable::printAsArray() const {
+    // pretty print the field variable as 2D array
+    for (int j = size_[1] - 1; j >= 0; j--) {
+        for (int i = 0; i < size_[0]; i++) {
+            std::cout << (*this)(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
 }

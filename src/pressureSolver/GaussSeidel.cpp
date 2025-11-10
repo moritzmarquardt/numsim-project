@@ -13,16 +13,17 @@ void GaussSeidel::solve() {
     const double eps_2 = epsilon_ * epsilon_;
 
     int iter = 0;
-    do {
-        for (int i = discretization_->pIBegin(); i < discretization_->pIEnd(); i++) {
-            for (int j = discretization_->pJBegin(); j < discretization_->pJEnd(); j++) {
+    while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2) {
+        iter++;
+        for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
+            for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
                 double ersterTerm = (discretization_->p(i+1,j) + discretization_->p(i-1,j)) / dx2;
                 double zweiterTerm = (discretization_->p(i,j+1) + discretization_->p(i,j-1)) / dy2;
                 discretization_->p(i,j) = lek * (ersterTerm + zweiterTerm - discretization_->rhs(i,j));
             }
         }
-        iter++;
         setBoundaryValues();
         computeResidualNorm();
-    } while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2);    
+    } ;
+    this->numberOfIterations_ = iter;
 };
