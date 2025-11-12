@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <cassert>
 
+// constructor
 Array2D::Array2D(std::array<int,2> size) :
   size_(size)
 {
@@ -10,12 +11,15 @@ Array2D::Array2D(std::array<int,2> size) :
   data_.resize(size_[0]*size_[1], 0.0);
 }
 
-//! get the size
+// get the size
 std::array<int,2> Array2D::size() const
 {
   return size_;
 }
 
+/**
+ * Access the value at coordinate (i,j), can be used to change the value
+ */
 double &Array2D::operator()(int i, int j)
 {
   const int index = j*size_[0] + i;
@@ -28,6 +32,9 @@ double &Array2D::operator()(int i, int j)
   return data_[index]; // das gibtn ne referenz zurück, die man dann ändern kann
 }
 
+/**
+ * Get the value at coordinate (i,j), declared const which means it does not change the array
+ */
 double Array2D::operator()(int i, int j) const
 {
   const int index = j*size_[0] + i;
@@ -40,14 +47,23 @@ double Array2D::operator()(int i, int j) const
   return data_[index]; // das gibt den value direkt zurück
 }
 
+/**
+ * Set all values to zero.
+ */
 void Array2D::setToZero() {
   std::fill(data_.begin(), data_.end(), 0.0);
 }
 
+/**
+ * Get pointer to raw data.
+ */
 void* Array2D::data() {
   return data_.data();
 }
 
+/**
+ * Assignment operator =
+ */
 Array2D& Array2D::operator=(const Array2D& other) {
     // Check if the sizes match
     if (size_ != other.size_) {

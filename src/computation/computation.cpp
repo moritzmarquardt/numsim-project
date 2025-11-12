@@ -45,7 +45,7 @@ void Computation::runSimulation() {
 
     while (currentTime < settings_.endTime) {
         applyBoundaryValues();
-        std::cout << "Applied boundary values." << std::endl;
+        // std::cout << "Applied boundary values." << std::endl;
         // print current u and v for debugging
         // std::cout << "Current u field:" << std::endl;
         // discretization_->u().printAsArray();
@@ -57,31 +57,37 @@ void Computation::runSimulation() {
         if (currentTime + dt_ > settings_.endTime) {
             dt_ = settings_.endTime - currentTime;
         }
-        std::cout << "Computed time step width: " << dt_ << std::endl;
+        // std::cout << "Computed time step width: " << dt_ << std::endl;
 
 
         computePreliminaryVelocities();
-        std::cout << "Computed preliminary velocities." << std::endl;
+        // std::cout << "Computed preliminary velocities." << std::endl;
         computeRightHandSide();
-        std::cout << "Computed right hand side." << std::endl;
+        // std::cout << "Computed right hand side." << std::endl;
         computePressure();
-        std::cout << "Computed pressure." << std::endl;
+        // std::cout << "Computed pressure." << std::endl;
         computeVelocities();
-        std::cout << "Computed velocities." << std::endl;
+        // std::cout << "Computed velocities." << std::endl;
 
         currentTime += dt_;
         iterationCount++;
-        std::cout << "Advanced to time: " << currentTime << std::endl;
-        std::cout << "Completed iteration: " << iterationCount << std::endl;
+        if (iterationCount % 10 == 0 || currentTime >= settings_.endTime) {
+            int percent = static_cast<int>((currentTime / settings_.endTime) * 100);
+            std::cout << "\rProgress: " << percent << "% | Time: " << currentTime 
+                    << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
+        }
+        // std::cout << "Advanced to time: " << currentTime << std::endl;
+        // std::cout << "Completed iteration: " << iterationCount << std::endl;
 
         outputWriterParaview_->writeFile(currentTime);
-        std::cout << "Wrote Paraview output." << std::endl;
+        // std::cout << "Wrote Paraview output." << std::endl;
         outputWriterText_->writeFile(currentTime);
-        std::cout << "Wrote text output." << std::endl;
+        // std::cout << "Wrote text output." << std::endl;
 
-        std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
+        // std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
         
     }
+    std::cout << std::endl << "Simulation completed." << std::endl;
 
     
 }
@@ -89,7 +95,8 @@ void Computation::runSimulation() {
 void Computation::applyInitialBoundaryValues() {
     // Apply initial boundary conditions for u, v, f, g
     // u and f lay at the right side of a cell, so the left boundary is at index uIBegin() - 1 and the right boundary at uIEnd() + 1
-    for (int j = discretization_->uJBegin(); j <= discretization_->uJEnd(); j++) {
+    for (int j = discretization_->uJBegin()-1; j <= discretization_->uJEnd()+1; j++) {
+        // because of the left and right boundary priorisation convention, u has to be set only once in the beginning left and right and v altt the time because it has to be interpolated to match the left and right values
         // go through all j indices, that have real cells for u.
         const int i_left_bc = discretization_->uIBegin() - 1;
         const int i_right_bc = discretization_->uIEnd() + 1;
@@ -113,8 +120,8 @@ void Computation::applyInitialBoundaryValues() {
 
 void Computation::applyBoundaryValues() {
     // Apply Dirichlet boundary conditions for u and v
-    std::cout << "Applying boundary values for u and v." << std::endl;
-    std::cout << "apply top bc from index i " << discretization_->uIBegin() << " to " << discretization_->uIEnd() << std::endl;
+    // std::cout << "Applying boundary values for u and v." << std::endl;
+    // std::cout << "apply top bc from index i " << discretization_->uIBegin() << " to " << discretization_->uIEnd() << std::endl;
     for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) { 
         // go through all i indices.
         const int j_bottom_bc = discretization_->uJBegin() - 1;
@@ -124,7 +131,7 @@ void Computation::applyBoundaryValues() {
         discretization_->u(i,j_bottom_bc) = 2 * settings_.dirichletBcBottom[0] - discretization_->u(i,j_bottom_inside);  // bottom
         discretization_->u(i,j_top_bc) = 2 * settings_.dirichletBcTop[0] - discretization_->u(i,j_top_inside);  // top
     }
-    for (int j = discretization_->vJBegin(); j <= discretization_->vJEnd(); j++) {
+    for (int j = discretization_->vJBegin()-1; j <= discretization_->vJEnd()+1; j++) {
         // go through all j indices.
         const int i_left_bc = discretization_->vIBegin() - 1;
         const int i_left_inside = discretization_->vIBegin();

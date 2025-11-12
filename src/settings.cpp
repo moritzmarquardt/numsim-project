@@ -20,18 +20,19 @@ void Settings::loadFromFile(std::string filename)
     return;
   }
 
-  // loop over lines of file
+  // go through all the lines in the txt file
   for (int lineNo = 0;; lineNo++)
   {
     // check if end of file is reached
     if (file.eof()) {
       break;
     }
-    // read line
+
+    // read line (it automatically moves to next line)
     std::string line;
     getline(file, line);
 
-    // remove whitespace at beginning of line
+    // remove whitespace and tabs at beginning of line
     line.erase(0, line.find_first_not_of(" \t")); 
 
     // if first character is a '#', skip line
@@ -44,20 +45,22 @@ void Settings::loadFromFile(std::string filename)
 
     // extract and isolate parameter name
     std::string parameterName = line.substr(0, line.find('='));
-    if (parameterName.find_first_of(" \t") != std::string::npos)
+    if (parameterName.find_first_of(" \t") != std::string::npos) //if it finds whitespace or tab
     {
+      // then remove them from the parameter name
       parameterName.erase(parameterName.find_first_of(" \t"));
     }
 
     // extract and isolate value
     std::string value = line.substr(line.find('=') + 1);
 
-    // remove whitespace at beginning of value
+    // remove whitespaces and tabs at beginning of value
     value.erase(0, value.find_first_not_of(" \t"));
     // remove comments at end of value
     if (value.find_first_of("#") != std::string::npos)
       value.erase(value.find_first_of("#"));
     // remove whitespace at end of value
+    // plus one bc we wantg to keep the last character
     value.erase(value.find_last_not_of(" \t") + 1); 
     
     // match parameterName and value to given variables

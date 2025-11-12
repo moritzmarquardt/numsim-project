@@ -19,8 +19,8 @@ void SOR::solve() {
         iter++;
         for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
             for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
-                double ersterTerm = (discretization_->p(i+1,j) + discretization_->p(i-1,j)) / dx2;
-                double zweiterTerm = (discretization_->p(i,j+1) + discretization_->p(i,j-1)) / dy2;
+                const double ersterTerm = (discretization_->p(i+1,j) + discretization_->p(i-1,j)) / dx2;
+                const double zweiterTerm = (discretization_->p(i,j+1) + discretization_->p(i,j-1)) / dy2;
                 discretization_->p(i,j) = (1 - omega_)* discretization_->p(i,j) + 
                 omega_ * lek * (ersterTerm + zweiterTerm - discretization_->rhs(i,j));
             }

@@ -11,27 +11,31 @@
 
 class FieldVariable : public Array2D {
 public:
-    //! constructor
+    /**
+     * Construct a field variable.
+
+    Parameters:
+        size	    The number of entries in x and y direction.
+        origin	    Cartesian coordinates of the point with (i,j) = (0,0), this is different from (0,0) for the u,v and p field variables.
+        meshWidth	The length of a single cell in x and y direction. 
+     */
     FieldVariable(std::array<int,2> size, std::array<double,2> origin, std::array<double,2> meshWidth);
 
     FieldVariable& operator=(const FieldVariable& other);
 
     /**
      * get the value at the Cartesian coordinate (x,y). The value is linearly interpolated between stored points. 
-     * Get the bilinear interpolated value of the discrete field variable
-     * @param x x-coordinate of the point
-     * @param y y-coordinate of the point
-     * @return interpolated value of the discrete field variable at position (x,y)
+     * We use bilinear interpolation to get the value at (x,y) based on the four surrounding points.
      */
     double interpolateAt(double x, double y) const;
 
     /**
-     * Compute maximum absolute value
+     * Compute maximum absolute value for the field variable to use it in the time step condition.
      */
     double computeMaxAbs() const;
 
     /**
-     * Print the field variable as 2D array to the standard output pretty formatted
+     * Print the field variable as 2D array to the standard output pretty formatted for debugging the code.
      */
     void printAsArray() const;
 
