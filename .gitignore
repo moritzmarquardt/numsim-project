@@ -6,3 +6,4 @@ build/out/
 
 # Ignore build directories
 build/
+out/
