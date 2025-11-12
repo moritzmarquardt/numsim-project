@@ -71,6 +71,11 @@ void Computation::runSimulation() {
 
         currentTime += dt_;
         iterationCount++;
+        if (iterationCount % 10 == 0 || currentTime >= settings_.endTime) {
+            int percent = static_cast<int>((currentTime / settings_.endTime) * 100);
+            std::cout << "\rProgress: " << percent << "% | Time: " << currentTime 
+                    << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
+        }
         // std::cout << "Advanced to time: " << currentTime << std::endl;
         // std::cout << "Completed iteration: " << iterationCount << std::endl;
 
@@ -82,6 +87,7 @@ void Computation::runSimulation() {
         // std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
         
     }
+    std::cout << std::endl << "Simulation completed." << std::endl;
 
     
 }

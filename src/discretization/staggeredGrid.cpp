@@ -85,7 +85,7 @@ int StaggeredGrid::uIBegin() const {
 }
 
 /**
- * the last index corresponding to a real cell in the field variable u in x direction
+ * the last valid index corresponding to a real cell in the field variable u in x direction
  * this is nCells_[0] - 1 because the last real cell in x direction has a boundary value at the right edge, so where the u values are defined.
  */
 int StaggeredGrid::uIEnd() const {

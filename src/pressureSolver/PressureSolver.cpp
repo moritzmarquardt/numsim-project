@@ -9,11 +9,11 @@ PressureSolver::PressureSolver(std::shared_ptr<Discretization> discretization, d
     epsilon_(epsilon), 
     maximumNumberOfIterations_(maximumNumberOfIterations) {}
 
-    /**
-     * setze pressure im äußersten ring auf den wert des jeweils benachbarten inneren cells
-     */
+
 void PressureSolver::setBoundaryValues() {
+    //setze pressure im äußersten ring auf den wert des jeweils benachbarten inneren cells
     // links und rechts von unten nach oben
+    // set the corner values in the j-iteration
     for (int j = discretization_->pJBegin() - 1; j <= discretization_->pJEnd() + 1; j++) {
         discretization_->p(discretization_->pIBegin() - 1, j) = discretization_->p(discretization_->pIBegin(), j); // links
         discretization_->p(discretization_->pIEnd() + 1, j) = discretization_->p(discretization_->pIEnd(), j); // rechts
