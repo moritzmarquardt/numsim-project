@@ -4,6 +4,7 @@
 
 #include <cstdlib>
 #include "settings.hpp"
+#include <mpi.h>
 #include "storage/array2d.hpp"
 
 int main(int argc, char *argv[])
@@ -25,13 +26,19 @@ int main(int argc, char *argv[])
     }
   }
 
-  
+  MPI_Init(&argc, &argv);
 
   Computation computation;
   std::cout << "Init..." << std::endl;
   computation.initialize(argc, argv);
   std::cout << "Initialization done. Running simulation..." << std::endl;
+
+  double startTime = MPI_Wtime();
   computation.runSimulation();
+  double endTime = MPI_Wtime();
+  std::cout << "Initialization time: " << endTime - startTime << " seconds." << std::endl;
+
+  MPI_Finalize();
 
   return EXIT_SUCCESS;
 }
