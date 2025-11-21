@@ -53,4 +53,12 @@ public:
   //! (i_local,j_local) + nodeOffset = (i_global,j_global)
   //! used in OutputWriterParaviewParallel
   std::array<int,2> nodeOffset() const;
+
+  private:
+    std::array<int,2> nCellsLocal_;    //< number of cells in own partition
+    std::array<int,2> nCellsGlobal_;   //< global number of cells
+    std::array<int,2> nodeOffset_;     //< offset of nodes in own partition
+    int ownRankNo_;                    //< own MPI rank no
+    int nRanks_;                       //< number of MPI ranks
+    std::array<int,2> nSubdomains_;   //< number of subdomains in x and y direction
 };
