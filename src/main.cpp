@@ -1,4 +1,3 @@
-#include "output_writer/write_paraview_output.hpp"
 #include "computation/computation.hpp"
 #include <iostream>
 
