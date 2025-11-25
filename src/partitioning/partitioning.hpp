@@ -61,4 +61,5 @@ public:
     int ownRankNo_;                    //< own MPI rank no
     int nRanks_;                       //< number of MPI ranks
     std::array<int,2> nSubdomains_;   //< number of subdomains in x and y direction
+    std::array<int,2> ownCoords_;     //< coordinates of own partition in the 2D grid of subdomains
 };
