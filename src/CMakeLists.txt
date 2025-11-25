@@ -8,7 +8,6 @@ project(numsim)
 add_executable(${PROJECT_NAME}
     main.cpp
     settings.cpp
-    output_writer/write_paraview_output.cpp
     output_writer/output_writer.cpp
     output_writer/output_writer_paraview.cpp
     output_writer/output_writer_text.cpp
