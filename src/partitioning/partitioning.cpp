@@ -1,44 +1,57 @@
 #include "partitioning.hpp"
 #include <mpi.h>
+#include <iostream>
 
-void Partitioning::initialize(std::array<int,2> nCellsGlobal)
+std::array<int,2> Partitioning::calcDist1D(int nCellsGlobal, int nSubdomains, int ownCoord)
 {
-    nSubdomains_ = {0,0};
-    nCellsGlobal_ = nCellsGlobal;
+    std::array<int,2> result{0,0}; // {nCellsLocal, nodeOffset}
 
-    MPI_Dims_create(nRanks_, 2, nSubdomains_.data());
-    // create Cartesian communicator
-    MPI_Comm cartComm;
-    const int periods[2] = {0, 0}; // non-periodic
-    MPI_Cart_create(MPI_COMM_WORLD, 2, nSubdomains_.data(), periods, 0, &cartComm);
+    // cells that can be evenly distributed
+    const int nCellsDist = nCellsGlobal / nSubdomains; // implicit int casting
 
-    // get own coordinates in Cartesian communicator
-    MPI_Comm_rank(cartComm, &ownRankNo_);
-    MPI_Comm_size(cartComm, &nRanks_);
-    MPI_Cart_coords(cartComm, ownRankNo_, 2, ownCoords_.data());
+    // cells that cannot be evenly distributed
+    const int nCellsRemaining = nCellsGlobal % nSubdomains;
 
-    const int nCellsRemainingX = nCellsGlobal_[0] % nSubdomains_[0]; // left over cells when division is not perfect
-    const int nCellsRemainingY = nCellsGlobal_[1] % nSubdomains_[1];
-
-    if (ownCoords_[0] < nCellsRemainingX)
+    if (ownCoord < nCellsRemaining)
     {
-        // TODO: check how ranks are ordered and the indexing of ownCoords_
-        nCellsLocal_[0] = nCellsGlobal_[0] / nSubdomains_[0] + 1;
-        nodeOffset_[0] = ownCoords_[0] * nCellsLocal_[0];
+        result[0] = nCellsDist + 1;
+        result[1] = ownCoord * (nCellsDist + 1);
     }
     else
     {
-        nCellsLocal_[0] = nCellsGlobal_[0] / nSubdomains_[0];
-        nodeOffset_[0] = nCellsRemainingX * (nCellsGlobal_[0] / nSubdomains_[0] + 1)
-                        + (ownCoords_[0] - nCellsRemainingX) * nCellsLocal_[0];
+        result[0] = nCellsDist;
+        result[1] = nCellsRemaining * (nCellsDist + 1) + (ownCoord - nCellsRemaining) * nCellsDist;
     }
 
-
-    
+    return result;
 }
 
+void Partitioning::initialize(std::array<int, 2> nCellsGlobal)
+{
+    nCellsGlobal_ = nCellsGlobal;
+    MPI_Comm_size(MPI_COMM_WORLD, &nRanks_); // set nRanks_
 
-/*
-std::array<int,2> nCellsLocal_;    //< number of cells in own partition
-    std::array<int,2> nodeOffset_;     //< offset of nodes in own partition
-    */
+    // let MPI compute a good division of ranks in x and y direction
+    nSubdomains_ = {0, 0};
+    const int dimensions = 2;
+    MPI_Dims_create(nRanks_, dimensions, nSubdomains_.data()); // set nSubdomains_
+
+    // create Cartesian communicator based on the computed number of subdomains
+    MPI_Comm cartComm;
+    const int periods[2] = {0, 0}; // non-periodic
+    MPI_Cart_create(MPI_COMM_WORLD, dimensions, nSubdomains_.data(), periods, 0, &cartComm);
+
+    // get own coordinates in Cartesian communicator
+    MPI_Comm_rank(cartComm, &ownRankNo_);                        // set ownRankNo_
+    MPI_Cart_coords(cartComm, ownRankNo_, dimensions, ownCoords_.data()); // set ownCoords_
+    std::cout << "Rank " << ownRankNo_ << " has coordinates (" << ownCoords_[0] << "," << ownCoords_[1] << ")\n";
+
+    // calculate how many cells are assigned to each subdomain
+    for (int dim = 0; dim < dimensions; dim++)
+    {
+        std::array<int,2> dist = calcDist1D(nCellsGlobal_[dim], nSubdomains_[dim], ownCoords_[dim]);
+        nCellsLocal_[dim] = dist[0];
+        nodeOffset_[dim] = dist[1];
+    }
+
+}
