@@ -2,7 +2,7 @@
 #include <cmath>
 #include <iostream>
 
-DonorCell::DonorCell(std::array<int, 2> nCells, std::array<double,2> meshWidth, std::shared_ptr<Partitioning> partitioning, double alpha) : 
+DonorCell::DonorCell(std::array<int, 2> nCells, std::array<double,2> meshWidth, double alpha, std::shared_ptr<Partitioning> partitioning) : 
     Discretization(nCells, meshWidth, partitioning), alpha_(alpha) {}
 
 double DonorCell::computeDu2Dx(int i, int j) const {
