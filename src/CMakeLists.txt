@@ -21,6 +21,7 @@ add_executable(${PROJECT_NAME}
     pressureSolver/SOR.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
+    partitioning/partitioning.cpp
 )
 
 # Add the project directory to include directories, to be able to include all project header files from anywhere
