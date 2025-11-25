@@ -12,16 +12,13 @@
 
 class Computation {
 public:
-    void initialize(int argc, char *argv[]);
-    void runSimulation();
+    virtual void initialize(int argc, char *argv[]);
+    virtual void runSimulation();
 
-private:
-    /**
-     * C
-     */
-    void computeTimeStepWidth();
-    void applyBoundaryValues();
-    void applyInitialBoundaryValues();
+protected:
+    virtual void computeTimeStepWidth();
+    virtual void applyBoundaryValues();
+    virtual void applyInitialBoundaryValues();
     void computePreliminaryVelocities();
     void computeRightHandSide();
     void computePressure();

@@ -2,6 +2,18 @@
 
 #include <array>
 
+/**
+ * @class Partitioning
+ * @brief Manages domain decomposition for parallel computation using MPI.
+ * 
+ * Attributes:
+ * - nCellsLocal_: Number of cells in the local subdomain.
+ * - nCellsGlobal_: Total number of cells in the global domain.
+ * - nodeOffset_: Offset of nodes in the local subdomain relative to the global domain.
+ * - ownRankNo_: The MPI rank number of the current process.
+ * - nRanks_: Total number of MPI ranks.
+ * - nSubdomains_: Number of subdomains in each spatial direction.
+ */
 class Partitioning
 {
 public:
@@ -59,6 +71,7 @@ public:
     std::array<int,2> nCellsGlobal_;   //< global number of cells
     std::array<int,2> nodeOffset_;     //< offset of nodes in own partition
     int ownRankNo_;                    //< own MPI rank no
+    std::array<int,2> ownCoords_;               //< own coordinates in the Cartesian communicator
     int nRanks_;                       //< number of MPI ranks
     std::array<int,2> nSubdomains_;   //< number of subdomains in x and y direction
 };
