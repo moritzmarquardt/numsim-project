@@ -7,15 +7,18 @@ void Computation::initialize(int argc, char *argv[]) {
     settings_.loadFromFile(argv[1]);
     settings_.printSettings();
 
+    partitioning_ = std::make_shared<Partitioning>();
+    partitioning_->initialize(settings_.nCells);
+
     // calculate mesh width
     meshWidth_[0] = settings_.physicalSize[0] / settings_.nCells[0];
     meshWidth_[1] = settings_.physicalSize[1] / settings_.nCells[1];
 
     // create discretization
     if (settings_.useDonorCell) {
-        discretization_ = std::make_shared<DonorCell>(settings_.nCells, meshWidth_, settings_.alpha);
+        discretization_ = std::make_shared<DonorCell>(settings_.nCells, meshWidth_, settings_.alpha, partitioning_);
     } else {
-        discretization_ = std::make_shared<CentralDifferences>(settings_.nCells, meshWidth_);
+        discretization_ = std::make_shared<CentralDifferences>(settings_.nCells, meshWidth_,partitioning_);
     }
 
     std::cout << "Created discretization with mesh width dx: " << meshWidth_[0] << ", dy: " << meshWidth_[1] << std::endl;
@@ -33,8 +36,8 @@ void Computation::initialize(int argc, char *argv[]) {
     }
 
     // create output writers
-    outputWriterParaview_ = std::make_unique<OutputWriterParaview>(discretization_);
-    outputWriterText_ = std::make_unique<OutputWriterText>(discretization_);
+    outputWriterParaview_ = std::make_unique<OutputWriterParaview>(discretization_, *partitioning_);
+    outputWriterText_ = std::make_unique<OutputWriterText>(discretization_, *partitioning_);
 }
 
 void Computation::runSimulation() {

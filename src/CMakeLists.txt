@@ -1,14 +1,13 @@
 cmake_minimum_required(VERSION 3.8)
 
 # Define the project name.
-project(numsim)
+project(numsim LANGUAGES CXX C)
 
 # Specify the name of the executable (${PROJECT_NAME} which is equal to what was set in the project() command).
 # Also specify the source files.
 add_executable(${PROJECT_NAME}
     main.cpp
     settings.cpp
-    output_writer/write_paraview_output.cpp
     output_writer/output_writer.cpp
     output_writer/output_writer_paraview.cpp
     output_writer/output_writer_text.cpp
@@ -22,6 +21,7 @@ add_executable(${PROJECT_NAME}
     pressureSolver/SOR.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
+    partitioning/partitioning.cpp
 )
 
 # Add the project directory to include directories, to be able to include all project header files from anywhere

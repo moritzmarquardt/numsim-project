@@ -8,6 +8,7 @@
 #include "pressureSolver/SOR.hpp"
 #include "output_writer/output_writer_paraview.hpp"
 #include "output_writer/output_writer_text.hpp"
+#include "partitioning/partitioning.hpp"
 
 
 class Computation {
@@ -31,4 +32,5 @@ protected:
     std::unique_ptr<OutputWriterText> outputWriterText_;
     std::array<double, 2> meshWidth_;
     double dt_;
+    std::shared_ptr<Partitioning> partitioning_;
 };

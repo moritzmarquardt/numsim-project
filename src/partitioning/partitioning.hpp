@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <mpi.h>
 
 /**
  * @class Partitioning
@@ -78,4 +79,9 @@ public:
     std::array<int,2> ownCoords_;               //< own coordinates in the Cartesian communicator
     int nRanks_;                       //< number of MPI ranks
     std::array<int,2> nSubdomains_;   //< number of subdomains in x and y direction
+    MPI_Comm cartComm_;              //< Cartesian communicator
+    int leftNeighbourRankNo_;      //< rank no of left neighbour
+    int rightNeighbourRankNo_;     //< rank no of right neighbour
+    int topNeighbourRankNo_;       //< rank no of top neighbour
+    int bottomNeighbourRankNo_;    //< rank no of bottom neighbour
 };

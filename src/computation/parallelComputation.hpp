@@ -5,6 +5,8 @@
 #include <mpi.h>
 #include "output_writer/output_writer_paraview_parallel.hpp"
 #include "output_writer/output_writer_text_parallel.hpp"
+#include "pressureSolver/parallelPressureSolver.hpp"
+#include "pressureSolver/RedBlackGaussSeidel.hpp"
 
 class ParallelComputation : public Computation {
     public:
