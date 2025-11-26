@@ -29,6 +29,8 @@ void ParallelPressureSolver::computeResidualNorm() {
 }
 
 void ParallelPressureSolver::communicateAndSetBoundaryValues() {
+
+    //TODO: IDea for improvement: optimize setting of boundary values by only sending/receiving the necessary values instead of the whole rows/columns (only red boundary values needed or black)
     
     const int pIBegin = discretization_->pIBegin();
     const int pIEnd = discretization_->pIEnd();
