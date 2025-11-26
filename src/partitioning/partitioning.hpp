@@ -71,6 +71,9 @@ public:
   //! used in OutputWriterParaviewParallel
   std::array<int,2> nodeOffset() const;
 
+  //! get the global number of cells in the whole computational domain
+  int getNCellsGlobal() const;
+
   private:
     std::array<int,2> nCellsLocal_;    //< number of cells in own partition
     std::array<int,2> nCellsGlobal_;   //< global number of cells
