@@ -11,14 +11,19 @@ add_executable(${PROJECT_NAME}
     output_writer/output_writer.cpp
     output_writer/output_writer_paraview.cpp
     output_writer/output_writer_text.cpp
+    output_writer/output_writer_paraview_parallel.cpp
+    output_writer/output_writer_text_parallel.cpp
     discretization/staggeredGrid.cpp
     discretization/discretization.cpp
     discretization/centralDifferences.cpp
     discretization/donorCell.cpp
     computation/computation.cpp
+    computation/parallelComputation.cpp
     pressureSolver/PressureSolver.cpp
+    pressureSolver/parallelPressureSolver.cpp
     pressureSolver/GaussSeidel.cpp
     pressureSolver/SOR.cpp
+    pressureSolver/RedBlackGaussSeidel.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
     partitioning/partitioning.cpp
