@@ -1,5 +1,4 @@
-#include "computation/computation.hpp"
-#include "partitioning/partitioning.hpp"
+#include "computation/parallelComputation.hpp"
 #include <iostream>
 
 #include <cstdlib>
@@ -26,15 +25,19 @@ int main(int argc, char *argv[])
     }
   }
 
+  // emasure time for parallel execution
   MPI_Init(&argc, &argv);
 
-  Partitioning partitioning;
-  partitioning.initialize({100, 100}); // Example global cell counts
 
-  MPI_Barrier(MPI_COMM_WORLD);  // Synchronize output
+  ParallelComputation computation;
+  computation.initialize(argc, argv);
 
+  double startTime = MPI_Wtime();
+  computation.runSimulation();
+  double endTime = MPI_Wtime();
 
   MPI_Finalize();
+  std::cout << "Total simulation time: " << endTime - startTime << " seconds." << std::endl;
 
   return EXIT_SUCCESS;
 }
