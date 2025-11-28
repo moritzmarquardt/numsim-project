@@ -19,6 +19,10 @@ this should create the outputs in build/out/
 - cmake nur machen, wenn sich die CMakeLists.txt ändert, also wenn man dateien hinzufügt oder entfernt
 - wenn das nicht der fall ist einfach schnell machen: ```make install``` und dann ```./numsim``` oder direkt ```make install && ./numsim```
 
+## To run parallel code locally with mpirun:
+- use same convenience script
+- run ``` mpirun -n 4 ./numsim "../src/lid_driven_cavity.txt"``` from build/ folder to run with 4 processes
+
 ## To run the code on the IPVS cluster:
 - to be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.
 
