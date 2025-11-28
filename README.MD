@@ -19,6 +19,21 @@ this should create the outputs in build/out/
 - cmake nur machen, wenn sich die CMakeLists.txt ändert, also wenn man dateien hinzufügt oder entfernt
 - wenn das nicht der fall ist einfach schnell machen: ```make install``` und dann ```./numsim``` oder direkt ```make install && ./numsim```
 
+## To run the code on the IPVS cluster:
+- to be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.
+
+### get into the informatics network:
+- one can use the normal cisco anyconnect vpn to connect to the informatics network
+- but you have to download the informatics network certificate from [http://www.zdi.uni-stuttgart.de/zdi/vpn/anyconnect.html](http://www.zdi.uni-stuttgart.de/zdi/vpn/anyconnect.html) (from within the informatics network for example by accessing the informatics computer pool)
+- then install the certificate in windows according to the instructions on the website.
+- to be able to access the informatics computer pool and then the vpn in vpn.informatik.uni-stuttgart.de you have to use you informatics login which is different from your ipvs cluster login
+
+### access the ipvs cluster:
+- once you are in the informatics network you can ssh into the ipvs cluster via ```ssh -X username@ipvslogin.informatik.uni-stuttgart.de``` as described in https://numsim-exercises.readthedocs.io/en/latest/exercise1/general_remarks.html
+- for this ssh you have to use the ipvs login
+- to then use the simcl1 computer inside that cluster use ```ssh -X simcl1```
+- then use slurm to submit jobs as described in [https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html](https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html) 
+
 
 ## Helpful links:
 - [https://numsim-exercises.readthedocs.io/en/latest/exercise1/index.html](https://numsim-exercises.readthedocs.io/en/latest/exercise1/index.html)
