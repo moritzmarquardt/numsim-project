@@ -54,7 +54,10 @@ void RedBlackSOR::solve() {
         communicateAndSetBoundaryValues();
         
         // Compute residual norm after full iteration
-        computeResidualNorm();
+        if (iter % 20 == 0 || iter == maximumNumberOfIterations_) {
+            computeResidualNorm();
+        }
+            
     }
     
     this->numberOfIterations_ = iter;

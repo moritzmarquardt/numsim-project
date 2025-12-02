@@ -38,13 +38,13 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
     const int pJEnd = discretization_->pJEnd();
 
     std::vector<double> sendBufferTop(pIEnd - pIBegin + 1, 0.0);
-    std::vector<double> rcvBufferTop(pIEnd - pIBegin + 1, 0.0);
+    // std::vector<double> rcvBufferTop(pIEnd - pIBegin + 1, 0.0);
     std::vector<double> sendBufferBottom(pIEnd - pIBegin + 1, 0.0);
-    std::vector<double> rcvBufferBottom(pIEnd - pIBegin + 1, 0.0);
+    // std::vector<double> rcvBufferBottom(pIEnd - pIBegin + 1, 0.0);
     std::vector<double> sendBufferLeft(pJEnd - pJBegin + 1, 0.0);
-    std::vector<double> rcvBufferLeft(pJEnd - pJBegin + 1, 0.0);
+    // std::vector<double> rcvBufferLeft(pJEnd - pJBegin + 1, 0.0);
     std::vector<double> sendBufferRight(pJEnd - pJBegin + 1, 0.0);
-    std::vector<double> rcvBufferRight(pJEnd - pJBegin + 1, 0.0);
+    // std::vector<double> rcvBufferRight(pJEnd - pJBegin + 1, 0.0);
 
     // init MPI request variables
     MPI_Request requestTop, requestBottom, requestLeft, requestRight;
@@ -59,7 +59,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
         }
         MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop);
-        MPI_Irecv(rcvBufferTop.data(), rcvBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop); 
+        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop); 
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
@@ -72,7 +72,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
         }
         MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestBottom);
-        MPI_Irecv(rcvBufferBottom.data(), rcvBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestBottom);
+        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestBottom);
     }
 
     if (partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -84,7 +84,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
             sendBufferLeft[j - pJBegin] = discretization_->p(pIBegin, j);
         }
         MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestLeft);
-        MPI_Irecv(rcvBufferLeft.data(), rcvBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestLeft);
+        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestLeft);
     }
 
     if (partitioning_->ownPartitionContainsRightBoundary()) {
@@ -96,7 +96,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
             sendBufferRight[j - pJBegin] = discretization_->p(pIEnd, j);
         }
         MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestRight);
-        MPI_Irecv(rcvBufferRight.data(), rcvBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestRight);
+        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestRight);
     }
 
     // nachdem kommuniziert wurde setzren wir die ghost nodes mit den empfangenen werten für ränder die nicht am globalen rand liegen
@@ -105,7 +105,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Wait(&requestTop, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            discretization_->p(i, pJEnd + 1) = rcvBufferTop[i - pIBegin];
+            discretization_->p(i, pJEnd + 1) = sendBufferTop[i - pIBegin];
         }
     }
 
@@ -113,7 +113,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Wait(&requestBottom, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            discretization_->p(i, pJBegin - 1) = rcvBufferBottom[i - pIBegin];
+            discretization_->p(i, pJBegin - 1) = sendBufferBottom[i - pIBegin];
         }
     }
 
@@ -121,7 +121,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Wait(&requestLeft, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            discretization_->p(pIBegin - 1, j) = rcvBufferLeft[j - pJBegin];
+            discretization_->p(pIBegin - 1, j) = sendBufferLeft[j - pJBegin];
         }
     }
 
@@ -129,7 +129,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Wait(&requestRight, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            discretization_->p(pIEnd + 1, j) = rcvBufferRight[j - pJBegin];
+            discretization_->p(pIEnd + 1, j) = sendBufferRight[j - pJBegin];
         }
     }
 }
