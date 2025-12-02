@@ -25,6 +25,9 @@ this should create the outputs in build/out/
 
 ## To run the code on the IPVS cluster:
 - to be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.
+- To compile the code on the cluster one has to use the module system there to load the required compilers and libraries.
+simcl1:[numsim-project] >module load gcc/10.2 openmpi/3.1.6-gcc-10.2 vtk/9.0.1 cmake/3.18.2
+simcl1:[numsim-project] >./set_up_and_cmake.sh
 
 ### get into the informatics network:
 - one can use the normal cisco anyconnect vpn to connect to the informatics network
