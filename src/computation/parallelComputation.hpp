@@ -7,6 +7,7 @@
 #include "output_writer/output_writer_text_parallel.hpp"
 #include "pressureSolver/parallelPressureSolver.hpp"
 #include "pressureSolver/RedBlackGaussSeidel.hpp"
+#include "pressureSolver/RedBlackSOR.hpp"
 
 class ParallelComputation : public Computation {
     public:

@@ -24,6 +24,7 @@ add_executable(${PROJECT_NAME}
     pressureSolver/GaussSeidel.cpp
     pressureSolver/SOR.cpp
     pressureSolver/RedBlackGaussSeidel.cpp
+    pressureSolver/RedBlackSOR.cpp
     storage/array2d.cpp
     storage/FieldVariable.cpp
     partitioning/partitioning.cpp
