@@ -1,4 +1,5 @@
 #include "parallelComputation.hpp"
+#include <cmath>
 
 void ParallelComputation::initialize(int argc, char *argv[]) {
     //TODO: implement parallel initialization
@@ -44,13 +45,14 @@ void ParallelComputation::runSimulation() {
 
     double currentTime = 0.0;
     int iterationCount = 0;
+    const double time_eps = 1e-8;
 
-    while (currentTime < settings_.endTime) {
+    while (currentTime < settings_.endTime - time_eps) {
         applyBoundaryValues();
 
         computeTimeStepWidth();
 
-        if (currentTime + dt_ > settings_.endTime) {
+        if (currentTime + dt_ > settings_.endTime - time_eps) {
             dt_ = settings_.endTime - currentTime;
         }
 

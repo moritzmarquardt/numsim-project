@@ -1,4 +1,5 @@
 #include "RedBlackSOR.hpp"
+#include <cmath>
 
 RedBlackSOR::RedBlackSOR(std::shared_ptr<Discretization> discretization, double epsilon, 
     int maximumNumberOfIterations, double omega, std::shared_ptr<Partitioning> partitioning)

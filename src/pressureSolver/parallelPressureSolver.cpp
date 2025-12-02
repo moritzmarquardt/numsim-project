@@ -76,7 +76,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
     }
 
     if (partitioning_->ownPartitionContainsLeftBoundary()) {
-        for (int j = pJBegin; j <= pJEnd; j++) {
+        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
             discretization_->p(pIBegin - 1, j) = discretization_->p(pIBegin, j);
         }
     } else {
@@ -88,7 +88,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
     }
 
     if (partitioning_->ownPartitionContainsRightBoundary()) {
-        for (int j = pJBegin; j <= pJEnd; j++) {
+        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
             discretization_->p(pIEnd + 1, j) = discretization_->p(pIEnd, j);
         }
     } else {
