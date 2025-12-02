@@ -152,11 +152,11 @@ void ParallelComputation::applyBoundaryValues() {
         for (int i = uIBegin; i <= uIEnd; i++) {
             sendBufferTopU[i - uIBegin] = discretization_->u(i,uJEnd);
         }
-        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
 
         for (int i = vIBegin; i <= vIEnd; i++) {
             sendBufferTopV[i - vIBegin] = discretization_->v(i,vJEnd - 1);
         }
+        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
         MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsTop);
 
         MPI_Irecv(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
@@ -171,11 +171,11 @@ void ParallelComputation::applyBoundaryValues() {
         for (int i = uIBegin; i <= uIEnd; i++) {
             sendBufferBottomU[i - uIBegin] = discretization_->u(i,uJBegin);
         }
-        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
 
         for (int i = vIBegin; i <= vIEnd; i++) {
             sendBufferBottomV[i - vIBegin] = discretization_->v(i,vJBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
         }
+        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
         MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsBottom);
 
         MPI_Irecv(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
@@ -190,11 +190,11 @@ void ParallelComputation::applyBoundaryValues() {
         for (int j = uJBegin; j <= uJEnd; j++) {
             sendBufferLeftU[j - uJBegin] = discretization_->u(uIBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
         }
-        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsLeft);
 
         for (int j = vJBegin; j <= vJEnd; j++) {
             sendBufferLeftV[j - vJBegin] = discretization_->v(vIBegin,j);
         }
+        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsLeft);
         MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsLeft);
         
         MPI_Irecv(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsLeft);
@@ -209,11 +209,11 @@ void ParallelComputation::applyBoundaryValues() {
         for (int j = uJBegin; j <= uJEnd; j++) {
             sendBufferRightU[j - uJBegin] = discretization_->u(uIEnd - 1,j);
         }
-        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsRight);
 
         for (int j = vJBegin; j <= vJEnd; j++) {
             sendBufferRightV[j - vJBegin] = discretization_->v(vIEnd,j);
         }
+        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsRight);
         MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsRight);
 
         MPI_Irecv(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsRight);
