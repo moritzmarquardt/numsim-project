@@ -27,10 +27,11 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
     } else if (settings_.pressureSolver == "SOR") {
+        pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
         // TODO: calculate optimal omega (not in settings hardcoded)
         // TODO: implement ParallelSOR
-        std::cerr << "Error: Parallel SOR not yet implemented." << std::endl;
-        std::exit(EXIT_FAILURE);
+        // std::cerr << "Error: Parallel SOR not yet implemented." << std::endl;
+        // std::exit(EXIT_FAILURE);
         // pressureSolver_ = std::make_unique<SOR>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, settings_.omega);
     } else {
         std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
