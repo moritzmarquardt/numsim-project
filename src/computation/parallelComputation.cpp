@@ -64,23 +64,23 @@ void ParallelComputation::runSimulation() {
 
         currentTime += dt_;
         iterationCount++;
-        if (iterationCount % 10 == 0 || currentTime >= settings_.endTime && partitioning_->ownRankNo() == 0) {
-            int percent = static_cast<int>((currentTime / settings_.endTime) * 100);
+        // if (iterationCount % 10 == 0 || currentTime >= settings_.endTime && partitioning_->ownRankNo() == 0) {
+        //     int percent = static_cast<int>((currentTime / settings_.endTime) * 100);
             
-            // Create progress bar
-            const int barWidth = 40;
-            int pos = barWidth * currentTime / settings_.endTime;
-            std::string progressBar = "[";
-            for (int i = 0; i < barWidth; ++i) {
-                if (i < pos) progressBar += "=";
-                else if (i == pos) progressBar += ">";
-                else progressBar += " ";
-            }
-            progressBar += "]";
+        //     // Create progress bar
+        //     const int barWidth = 40;
+        //     int pos = barWidth * currentTime / settings_.endTime;
+        //     std::string progressBar = "[";
+        //     for (int i = 0; i < barWidth; ++i) {
+        //         if (i < pos) progressBar += "=";
+        //         else if (i == pos) progressBar += ">";
+        //         else progressBar += " ";
+        //     }
+        //     progressBar += "]";
             
-            std::cout << "\rProgress: " << progressBar << " " << percent << "% | Time: " << currentTime 
-                    << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
-        }
+        //     std::cout << "\rProgress: " << progressBar << " " << percent << "% | Time: " << currentTime 
+        //             << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
+        // }
         // std::cout << "Advanced to time: " << currentTime << std::endl;
         // std::cout << "Completed iteration: " << iterationCount << std::endl;
 

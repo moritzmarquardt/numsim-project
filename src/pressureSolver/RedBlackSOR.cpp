@@ -17,6 +17,10 @@ void RedBlackSOR::solve() {
     
     while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2) {
         iter++;
+
+        // if (iter == maximumNumberOfIterations_) {
+        //     std::cout << "Warning: Maximum number of iterations reached in Red-Black SOR: " << maximumNumberOfIterations_ << std::endl;
+        // }
         
         // Red-Black ordering: (i+j) % 2 determines color
         // Red cells: (i+j) % 2 == 0
