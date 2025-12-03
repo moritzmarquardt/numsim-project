@@ -46,6 +46,7 @@ void ParallelComputation::runSimulation() {
     double currentTime = 0.0;
     int iterationCount = 0;
     const double time_eps = 1e-8;
+    int nOutputs = 1;
 
     while (currentTime < settings_.endTime - time_eps) {
         applyBoundaryValues();
@@ -83,8 +84,11 @@ void ParallelComputation::runSimulation() {
         // }
         // std::cout << "Advanced to time: " << currentTime << std::endl;
         // std::cout << "Completed iteration: " << iterationCount << std::endl;
-
-        outputWriterParaview_->writeFile(currentTime);
+        if (currentTime >= nOutputs) {
+            outputWriterParaview_->writeFile(currentTime);
+            nOutputs = nOutputs + 1;
+        }
+        
         // std::cout << "Wrote Paraview output." << std::endl;
         // outputWriterText_->writeFile(currentTime);
         // std::cout << "Wrote text output." << std::endl;
