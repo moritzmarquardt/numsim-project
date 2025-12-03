@@ -137,10 +137,14 @@ void ParallelComputation::applyBoundaryValues() {
     const int vJEnd = discretization_->vJEnd();
 
     // buffers
-    std::vector<double> sendBufferTop(uIEnd - uIBegin + vIEnd - vIBegin + 2, 0.0);
-    std::vector<double> sendBufferBottom(uIEnd - uIBegin + vIEnd - vIBegin + 2, 0.0);
-    std::vector<double> sendBufferLeft(uJEnd - uJBegin + vJEnd - vJBegin + 2, 0.0);
-    std::vector<double> sendBufferRight(uJEnd - uJBegin + vJEnd - vJBegin + 2, 0.0);
+    std::vector<double> sendBufferTopU(uIEnd - uIBegin + 1, 0.0);
+    std::vector<double> sendBufferTopV(vIEnd - vIBegin + 1, 0.0);
+    std::vector<double> sendBufferBottomU(uIEnd - uIBegin + 1, 0.0);
+    std::vector<double> sendBufferBottomV(vIEnd - vIBegin + 1, 0.0);
+    std::vector<double> sendBufferLeftU(uJEnd - uJBegin + 1, 0.0);
+    std::vector<double> sendBufferLeftV(vJEnd - vJBegin + 1, 0.0);
+    std::vector<double> sendBufferRightU(uJEnd - uJBegin + 1, 0.0);
+    std::vector<double> sendBufferRightV(vJEnd - vJBegin + 1, 0.0);
 
     MPI_Request requestsTop, requestsBottom, requestsLeft, requestsRight;
     const int TAG_U = 0;
@@ -152,15 +156,17 @@ void ParallelComputation::applyBoundaryValues() {
         }
     } else {
         for (int i = uIBegin; i <= uIEnd; i++) {
-            sendBufferTop[i - uIBegin] = discretization_->u(i,uJEnd);
+            sendBufferTopU[i - uIBegin] = discretization_->u(i,uJEnd);
         }
 
         for (int i = vIBegin; i <= vIEnd; i++) {
-            sendBufferTop[i - vIBegin + uIEnd + 1 - uIBegin] = discretization_->v(i,vJEnd - 1);
+            sendBufferTopV[i - vIBegin] = discretization_->v(i,vJEnd - 1);
         }
-        MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsTop);
+        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
+        MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsTop);
 
-        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsTop);
+        MPI_Irecv(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
+        MPI_Irecv(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsTop);
     }
     
     if (partitioning_->ownPartitionContainsBottomBoundary()) {
@@ -169,15 +175,17 @@ void ParallelComputation::applyBoundaryValues() {
         }
     } else {
         for (int i = uIBegin; i <= uIEnd; i++) {
-            sendBufferBottom[i - uIBegin] = discretization_->u(i,uJBegin);
+            sendBufferBottomU[i - uIBegin] = discretization_->u(i,uJBegin);
         }
 
         for (int i = vIBegin; i <= vIEnd; i++) {
-            sendBufferBottom[i - vIBegin + uIEnd + 1 - uIBegin] = discretization_->v(i,vJBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
+            sendBufferBottomV[i - vIBegin] = discretization_->v(i,vJBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
         }
-        MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsBottom);
+        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
+        MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsBottom);
 
-        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
+        MPI_Irecv(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsBottom);
+        MPI_Irecv(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsBottom);
     }
 
     if (partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -186,15 +194,17 @@ void ParallelComputation::applyBoundaryValues() {
         }
     } else {
         for (int j = uJBegin; j <= uJEnd; j++) {
-            sendBufferLeft[j - uJBegin] = discretization_->u(uIBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
+            sendBufferLeftU[j - uJBegin] = discretization_->u(uIBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
         }
 
         for (int j = vJBegin; j <= vJEnd; j++) {
-            sendBufferLeft[j - vJBegin + uJEnd + 1 - uJBegin] = discretization_->v(vIBegin,j);
+            sendBufferLeftV[j - vJBegin] = discretization_->v(vIBegin,j);
         }
-        MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsLeft);
+        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsLeft);
+        MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsLeft);
         
-        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsLeft);
+        MPI_Irecv(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsLeft);
+        MPI_Irecv(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsLeft);
     }
 
     if (partitioning_->ownPartitionContainsRightBoundary()) {
@@ -203,52 +213,54 @@ void ParallelComputation::applyBoundaryValues() {
         }
     } else {
         for (int j = uJBegin; j <= uJEnd; j++) {
-            sendBufferRight[j - uJBegin] = discretization_->u(uIEnd - 1,j);
+            sendBufferRightU[j - uJBegin] = discretization_->u(uIEnd - 1,j);
         }
 
         for (int j = vJBegin; j <= vJEnd; j++) {
-            sendBufferRight[j - vJBegin + uJEnd + 1 - uJBegin] = discretization_->v(vIEnd,j);
+            sendBufferRightV[j - vJBegin] = discretization_->v(vIEnd,j);
         }
-        MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsRight);
-        
-        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestsRight);
+        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsRight);
+        MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsRight);
+
+        MPI_Irecv(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsRight);
+        MPI_Irecv(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsRight);
     }
 
     // wait for all communications to finish
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
         MPI_Wait(&requestsTop, MPI_STATUS_IGNORE);
         for (int i = uIBegin; i <= uIEnd; i++) {
-            discretization_->u(i,uJEnd + 1) = sendBufferTop[i - uIBegin];
+            discretization_->u(i,uJEnd + 1) = sendBufferTopU[i - uIBegin];
         }
         for (int i = vIBegin; i <= vIEnd; i++) {
-            discretization_->v(i,vJEnd + 1) = sendBufferTop[i - vIBegin + uIEnd + 1 - uIBegin];
+            discretization_->v(i,vJEnd + 1) = sendBufferTopV[i - vIBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
         MPI_Wait(&requestsBottom, MPI_STATUS_IGNORE);
         for (int i = uIBegin; i <= uIEnd; i++) {
-            discretization_->u(i,uJBegin - 1) = sendBufferBottom[i - uIBegin];
+            discretization_->u(i,uJBegin - 1) = sendBufferBottomU[i - uIBegin];
         }
         for (int i = vIBegin; i <= vIEnd; i++) {
-            discretization_->v(i,vJBegin - 1) = sendBufferBottom[i - vIBegin + uIEnd + 1 - uIBegin];
+            discretization_->v(i,vJBegin - 1) = sendBufferBottomV[i - vIBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
         MPI_Wait(&requestsLeft, MPI_STATUS_IGNORE);
         for (int j = uJBegin; j <= uJEnd; j++) {
-            discretization_->u(uIBegin - 1,j) = sendBufferLeft[j - uJBegin];
+            discretization_->u(uIBegin - 1,j) = sendBufferLeftU[j - uJBegin];
         }
         for (int j = vJBegin; j <= vJEnd; j++) {
-            discretization_->v(vIBegin - 1,j) = sendBufferLeft[j - vJBegin + uJEnd + 1 - uJBegin];
+            discretization_->v(vIBegin - 1,j) = sendBufferLeftV[j - vJBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
         MPI_Wait(&requestsRight, MPI_STATUS_IGNORE);
         for (int j = uJBegin; j <= uJEnd; j++) {
-            discretization_->u(uIEnd + 1,j) = sendBufferRight[j - uJBegin];
+            discretization_->u(uIEnd + 1,j) = sendBufferRightU[j - uJBegin];
         }
         for (int j = vJBegin; j <= vJEnd; j++) {
-            discretization_->v(vIEnd + 1,j) = sendBufferRight[j - vJBegin + uJEnd + 1 - uJBegin];
+            discretization_->v(vIEnd + 1,j) = sendBufferRightV[j - vJBegin];
         }
     }
 }
