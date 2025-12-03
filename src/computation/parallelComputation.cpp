@@ -86,7 +86,7 @@ void ParallelComputation::runSimulation() {
 
         outputWriterParaview_->writeFile(currentTime);
         // std::cout << "Wrote Paraview output." << std::endl;
-        outputWriterText_->writeFile(currentTime);
+        // outputWriterText_->writeFile(currentTime);
         // std::cout << "Wrote text output." << std::endl;
 
         // std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
