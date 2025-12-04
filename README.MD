@@ -19,6 +19,28 @@ this should create the outputs in build/out/
 - cmake nur machen, wenn sich die CMakeLists.txt ändert, also wenn man dateien hinzufügt oder entfernt
 - wenn das nicht der fall ist einfach schnell machen: ```make install``` und dann ```./numsim``` oder direkt ```make install && ./numsim```
 
+## to inspect the code and performance
+- put gprof in the cmakelist:
+
+# GPROF
+option(PROFILE "Add flags to profile the program with gprof." OFF)
+
+if(PROFILE)
+
+  SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -pg -g")
+
+  SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -pg -g")
+
+endif()
+
+- compile with ```cmake -DPROFILE=ON ..```
+- make install
+- run like usual
+- use gprof to make text file: 
+    - on function level: ```gprof numsim_parallel > out1.txt```
+    - on code line level: ```gprof -l numsim_parallel > out2.txt```
+- use tool to visualize this graphically
+
 ## To run parallel code locally with mpirun:
 - use same convenience script
 - run ``` mpirun -n 4 ./numsim "../src/lid_driven_cavity.txt"``` from build/ folder to run with 4 processes
