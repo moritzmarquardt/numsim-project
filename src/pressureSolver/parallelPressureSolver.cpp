@@ -24,27 +24,26 @@ void ParallelPressureSolver::computeResidualNorm() {
     }
 
     double residual_norm_global = 0.0;
+    // perform global reduction to sum up residual norms from all processes
+    // blocking call is acceptable here since we need the result before proceeding
     MPI_Allreduce(&residual_norm_squared, &residual_norm_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     residualNorm_ = residual_norm_global / N_global;
 }
 
 void ParallelPressureSolver::communicateAndSetBoundaryValues() {
 
-    //TODO: IDea for improvement: optimize setting of boundary values by only sending/receiving the necessary values instead of the whole rows/columns (only red boundary values needed or black)
+    //TODO: Idea for improvement: optimize setting of boundary values by only sending/receiving the necessary values instead of the whole rows/columns (only red boundary values needed or black)
     
     const int pIBegin = discretization_->pIBegin();
     const int pIEnd = discretization_->pIEnd();
     const int pJBegin = discretization_->pJBegin();
     const int pJEnd = discretization_->pJEnd();
 
+    // buffers for sending and receiving data
     std::vector<double> sendBufferTop(pIEnd - pIBegin + 1, 0.0);
-    // std::vector<double> rcvBufferTop(pIEnd - pIBegin + 1, 0.0);
     std::vector<double> sendBufferBottom(pIEnd - pIBegin + 1, 0.0);
-    // std::vector<double> rcvBufferBottom(pIEnd - pIBegin + 1, 0.0);
     std::vector<double> sendBufferLeft(pJEnd - pJBegin + 1, 0.0);
-    // std::vector<double> rcvBufferLeft(pJEnd - pJBegin + 1, 0.0);
     std::vector<double> sendBufferRight(pJEnd - pJBegin + 1, 0.0);
-    // std::vector<double> rcvBufferRight(pJEnd - pJBegin + 1, 0.0);
 
     // init MPI request variables
     MPI_Request requestTop, requestBottom, requestLeft, requestRight;
@@ -58,6 +57,7 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
         }
+        // instantiate non-blocking sends and receives
         MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop);
         MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop); 
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)

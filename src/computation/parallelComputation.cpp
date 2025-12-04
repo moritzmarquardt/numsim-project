@@ -2,9 +2,8 @@
 #include <cmath>
 
 void ParallelComputation::initialize(int argc, char *argv[]) {
-    //TODO: implement parallel initialization
+    
     settings_.loadFromFile(argv[1]);
-    // settings_.printSettings();
 
     partitioning_ = std::make_shared<Partitioning>();
     partitioning_->initialize(settings_.nCells);
@@ -20,9 +19,6 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
     } else {
         discretization_ = std::make_shared<CentralDifferences>(nCellsLocal, meshWidth_,partitioning_);
     }
-
-    // std::cout << "Created discretization with mesh width dx: " << meshWidth_[0] << ", dy: " << meshWidth_[1] << std::endl;
-    // std::cout << "Number of cells in x direction: " << nCellsLocal[0] << ", y direction: " << nCellsLocal[1] << std::endl;
 
     // create pressure solver
     if (settings_.pressureSolver == "GaussSeidel") {
@@ -65,38 +61,15 @@ void ParallelComputation::runSimulation() {
 
         currentTime += dt_;
         iterationCount++;
-        // if (iterationCount % 10 == 0 || currentTime >= settings_.endTime && partitioning_->ownRankNo() == 0) {
-        //     int percent = static_cast<int>((currentTime / settings_.endTime) * 100);
-            
-        //     // Create progress bar
-        //     const int barWidth = 40;
-        //     int pos = barWidth * currentTime / settings_.endTime;
-        //     std::string progressBar = "[";
-        //     for (int i = 0; i < barWidth; ++i) {
-        //         if (i < pos) progressBar += "=";
-        //         else if (i == pos) progressBar += ">";
-        //         else progressBar += " ";
-        //     }
-        //     progressBar += "]";
-            
-        //     std::cout << "\rProgress: " << progressBar << " " << percent << "% | Time: " << currentTime 
-        //             << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
-        // }
-        // std::cout << "Advanced to time: " << currentTime << std::endl;
-        // std::cout << "Completed iteration: " << iterationCount << std::endl;
+
+        // this was the fix!!!
         if (currentTime >= nOutputs) {
             outputWriterParaview_->writeFile(currentTime);
             nOutputs = nOutputs + 1;
         }
         
-        // std::cout << "Wrote Paraview output." << std::endl;
-        // outputWriterText_->writeFile(currentTime);
-        // std::cout << "Wrote text output." << std::endl;
-
-        // std::cout << "Iteration: " << iterationCount << ", Time: " << currentTime << ", dt: " << dt_ << std::endl;
-        
+       
     }
-    // std::cout << std::endl << "Simulation completed." << std::endl;
 }
 
 void ParallelComputation::computeTimeStepWidth() {
@@ -112,6 +85,7 @@ void ParallelComputation::computeTimeStepWidth() {
 
     MPI_Request time_request;
     double dt_conv_cond_global = 0.0;
+    // perform global reduction to find minimum dt_conv_cond across all processes
     MPI_Iallreduce(&dt_conv_cond_local, &dt_conv_cond_global, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD, &time_request);
     MPI_Wait(&time_request, MPI_STATUS_IGNORE);
 
@@ -136,7 +110,7 @@ void ParallelComputation::applyBoundaryValues() {
     const int vJBegin = discretization_->vJBegin();
     const int vJEnd = discretization_->vJEnd();
 
-    // buffers
+    // buffers for sending and receiving data
     std::vector<double> sendBufferTopU(uIEnd - uIBegin + 1, 0.0);
     std::vector<double> sendBufferTopV(vIEnd - vIBegin + 1, 0.0);
     std::vector<double> sendBufferBottomU(uIEnd - uIBegin + 1, 0.0);
@@ -151,10 +125,12 @@ void ParallelComputation::applyBoundaryValues() {
     const int TAG_V = 1;
 
     if (partitioning_->ownPartitionContainsTopBoundary()) {
+        // set boundary values as usual if owning the top boundary
         for (int i = uIBegin; i <= uIEnd; i++) { 
             discretization_->u(i,uJEnd + 1) = 2 * settings_.dirichletBcTop[0] - discretization_->u(i,uJEnd); 
         }
     } else {
+        // otherwise communicate with the top neighbour
         for (int i = uIBegin; i <= uIEnd; i++) {
             sendBufferTopU[i - uIBegin] = discretization_->u(i,uJEnd);
         }
@@ -162,6 +138,7 @@ void ParallelComputation::applyBoundaryValues() {
         for (int i = vIBegin; i <= vIEnd; i++) {
             sendBufferTopV[i - vIBegin] = discretization_->v(i,vJEnd - 1);
         }
+        // instantiate non-blocking sends and receives
         MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, MPI_COMM_WORLD, &requestsTop);
         MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsTop);
 
@@ -226,7 +203,7 @@ void ParallelComputation::applyBoundaryValues() {
         MPI_Irecv(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, MPI_COMM_WORLD, &requestsRight);
     }
 
-    // wait for all communications to finish
+    // wait for all communications to finish and set boundary values
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
         MPI_Wait(&requestsTop, MPI_STATUS_IGNORE);
         for (int i = uIBegin; i <= uIEnd; i++) {

@@ -18,12 +18,13 @@ void RedBlackGaussSeidel::solve() {
         
         // Red-Black ordering: (i+j) % 2 determines color
         // Red cells: (i+j) % 2 == 0
+        // compute optional shift based on global node offset (depending on the subdomain we are in) to ensure consitent coloring across partitions
         int optionalShift = 0;
         if ((partitioning_->nodeOffset()[0] + partitioning_->nodeOffset()[1]) % 2 == 1) {
             optionalShift = 1;
         }
             
-
+        // Red cells: (i+j) % 2 == 0
         for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
             const int i_start = discretization_->pIBegin() + ((j + optionalShift) % 2);
             for (int i = i_start; i <= discretization_->pIEnd(); i+=2) {

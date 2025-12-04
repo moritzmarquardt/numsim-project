@@ -8,6 +8,11 @@
 class ParallelPressureSolver : public PressureSolver {
 public:
     ParallelPressureSolver(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning);
+    
+    /**
+     * solve the system of the Poisson equation for pressure
+     * has to be implemented in derived classes
+     */
     virtual void solve() = 0;
 
 

@@ -22,7 +22,9 @@ public:
   //! compute partitioning, set internal variables
   void initialize(std::array<int,2> nCellsGlobal);
 
-  // calculate distribution along one axis
+  // calculate distribution of nodes along one axis
+  // distributes the given number of global cells to the given number of subdomains
+  // important if the number of cells is not divisible by the number of subdomains
   // return array with {nCellsLocal, nodeOffset}
   std::array<int,2> calcDist1D(int nCellsGlobal, int nSubdomains, int ownCoord);
 

@@ -56,22 +56,6 @@ void Partitioning::initialize(std::array<int, 2> nCellsGlobal)
     MPI_Cart_shift(cartComm_, 0, 1, &leftNeighbourRankNo_, &rightNeighbourRankNo_);  // shift in dimension 0 (x-direction)
     MPI_Cart_shift(cartComm_, 1, 1, &bottomNeighbourRankNo_, &topNeighbourRankNo_);  // shift in dimension 1 (y-direction)
 
-    // std::cout << "\n=== Rank " << ownRankNo_
-    //         << " / " << nRanks_-1 << " ===\n";
-    // std::cout << "Local cells: [" << nCellsLocal_[0] 
-    //             << ", " << nCellsLocal_[1] << "]\n";
-    // std::cout << "Node offset: [" << nodeOffset_[0] 
-    //             << ", " << nodeOffset_[1] << "]\n";
-    // std::cout << "Boundaries: "
-    //             << (ownPartitionContainsLeftBoundary() ? "LEFT " : "")
-    //             << (ownPartitionContainsRightBoundary() ? "RIGHT " : "")
-    //             << (ownPartitionContainsBottomBoundary() ? "BOTTOM " : "")
-    //             << (ownPartitionContainsTopBoundary() ? "TOP " : "")
-    //             << "\n";
-    // std::cout << "Rank " << ownRankNo_ << " has coordinates (" << ownCoords_[0] << "," << ownCoords_[1] << ")\n";
-    // std::cout << "Rank has neighbours: left " << leftNeighbourRankNo_ << ", right " << rightNeighbourRankNo_
-    //           << ", bottom " << bottomNeighbourRankNo_ << ", top " << topNeighbourRankNo_ << "\n";
-
 
 }
 

@@ -18,18 +18,16 @@ void RedBlackSOR::solve() {
     while (iter < maximumNumberOfIterations_ && residualNorm_ > eps_2) {
         iter++;
 
-        // if (iter == maximumNumberOfIterations_) {
-        //     std::cout << "Warning: Maximum number of iterations reached in Red-Black SOR: " << maximumNumberOfIterations_ << std::endl;
-        // }
-        
+
         // Red-Black ordering: (i+j) % 2 determines color
         // Red cells: (i+j) % 2 == 0
+        // compute optional shift based on global node offset (depending on the subdomain we are in) to ensure consitent coloring across partitions
         int optionalShift = 0;
         if ((partitioning_->nodeOffset()[0] + partitioning_->nodeOffset()[1]) % 2 == 1) {
             optionalShift = 1;
         }
             
-
+        // Red cells: (i+j) % 2 == 0
         for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
             const int i_start = discretization_->pIBegin() + ((j + optionalShift) % 2);
             for (int i = i_start; i <= discretization_->pIEnd(); i+=2) {
@@ -57,7 +55,9 @@ void RedBlackSOR::solve() {
         // Communicate black cell values and set boundary values
         communicateAndSetBoundaryValues();
         
-        // Compute residual norm after full iteration
+        // Compute residual norm after 20 iterations or at the end to reduce communication overhead
+        // This is a trade-off between accuracy of the stopping criterion and performance
+        // idea: assume 19 more iterations more are less expensive than one global communication
         if (iter % 20 == 0 || iter == maximumNumberOfIterations_) {
             computeResidualNorm();
         }
