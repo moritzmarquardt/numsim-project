@@ -8,23 +8,6 @@
 
 int main(int argc, char *argv[])
 {
-
-  if (argc < 2)
-  {
-    std::cerr << "Usage: " << (argc > 0 ? argv[0] : "numsim") << " <settings-file>" << std::endl;
-    return EXIT_FAILURE;
-  }
-  else
-  {
-    // check if the settings file exists and can be opened
-    std::ifstream settingsFile(argv[1]);
-    if (!settingsFile.is_open())
-    {
-      std::cerr << "Error: Could not open settings file: " << argv[1] << std::endl;
-      return EXIT_FAILURE;
-    }
-  }
-
   // emasure time for parallel execution
   MPI_Init(&argc, &argv);
   int rank;
