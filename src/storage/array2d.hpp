@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <array>
+#include <cassert>
 
 /** 
  *  This class represents a 2D array of double values.
@@ -15,13 +16,36 @@ public:
   Array2D(std::array<int,2> size);
 
   //! get the size
-  std::array<int,2> size() const;
+  std::array<int,2> size() const
+  {
+    return size_;
+  }
 
   //! access the value at coordinate (i,j), declared not const, i.e. the value can be changed
-  double &operator()(int i, int j);
+  inline double &operator()(int i, int j)
+  {
+    const int index = j*size_[0] + i;
+
+    // assert that indices are in range
+    assert(0 <= i && i < size_[0]);
+    assert(0 <= j && j < size_[1]);
+    assert(j*size_[0] + i < (int)data_.size());
+
+    return data_[index];
+  }
 
   //! get the value at coordinate (i,j), declared const, i.e. it is not possible to change the value
-  double operator()(int i, int j) const;
+  inline double operator()(int i, int j) const
+  {
+    const int index = j*size_[0] + i;
+
+    // assert that indices are in range
+    assert(0 <= i && i < size_[0]);
+    assert(0 <= j && j < size_[1]);
+    assert(j*size_[0] + i < (int)data_.size());
+
+    return data_[index];
+  }
 
   void setToZero();
 
