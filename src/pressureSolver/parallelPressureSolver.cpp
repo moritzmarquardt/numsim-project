@@ -5,7 +5,9 @@
 #include <cmath>
 
 ParallelPressureSolver::ParallelPressureSolver(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
-    PressureSolver(discretization, epsilon, maximumNumberOfIterations), partitioning_(partitioning) {}
+    PressureSolver(discretization, epsilon, maximumNumberOfIterations), partitioning_(partitioning) {
+    cartComm_ = partitioning_->getCartComm();
+}
 
 void ParallelPressureSolver::computeResidualNorm() {
     double residual_norm_squared = 0.0;

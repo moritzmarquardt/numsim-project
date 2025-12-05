@@ -34,6 +34,9 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
     // create output writers
     outputWriterParaview_ = std::make_unique<OutputWriterParaviewParallel>(discretization_, *partitioning_);
     outputWriterText_ = std::make_unique<OutputWriterTextParallel>(discretization_, *partitioning_);
+
+    //Set cartComm_ member
+    cartComm_ = partitioning_->getCartComm();
 }
 
 void ParallelComputation::runSimulation() {

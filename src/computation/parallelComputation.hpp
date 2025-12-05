@@ -46,4 +46,5 @@ class ParallelComputation : public Computation {
 
         std::unique_ptr<OutputWriterParaviewParallel> outputWriterParaview_;
         std::unique_ptr<OutputWriterTextParallel> outputWriterText_;
+        MPI_Comm cartComm_;
 };
