@@ -128,3 +128,8 @@ int Partitioning::getNCellsGlobal() const
 {
     return nCellsGlobal_[0] * nCellsGlobal_[1];
 }
+
+MPI_Comm Partitioning::getCartComm() const
+{
+    return cartComm_;
+}
