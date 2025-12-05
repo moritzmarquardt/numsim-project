@@ -71,10 +71,10 @@ void ParallelCG::solve() {
         MPI_Request request_rTw, request_wTw, request_rTr, request_dTw;
         MPI_Iallreduce(MPI_IN_PLACE, &rTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_rTw);
         MPI_Iallreduce(MPI_IN_PLACE, &wTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_wTw);
-        MPI_Iallreduce(MPI_IN_PLACE, &rTr_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_rTr);
+        // MPI_Iallreduce(MPI_IN_PLACE, &rTr_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_rTr);
         MPI_Iallreduce(MPI_IN_PLACE, &dTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_dTw);
 
-        MPI_Wait(&request_rTr, MPI_STATUS_IGNORE);
+        // MPI_Wait(&request_rTr, MPI_STATUS_IGNORE);
         MPI_Wait(&request_dTw, MPI_STATUS_IGNORE);
         alpha_ = rTr_ / dTw_;
 
