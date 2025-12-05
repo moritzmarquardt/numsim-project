@@ -8,6 +8,7 @@
 #include "pressureSolver/parallelPressureSolver.hpp"
 #include "pressureSolver/RedBlackGaussSeidel.hpp"
 #include "pressureSolver/RedBlackSOR.hpp"
+#include "pressureSolver/parallelCG.hpp"
 
 class ParallelComputation : public Computation {
     public:
