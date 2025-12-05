@@ -38,7 +38,9 @@ void Partitioning::initialize(std::array<int, 2> nCellsGlobal)
 
     // create Cartesian communicator based on the computed number of subdomains
     const int periods[2] = {0, 0}; // non-periodic
-    MPI_Cart_create(MPI_COMM_WORLD, dimensions, nSubdomains_.data(), periods, 0, &cartComm_); //TODO: check if true reordering also works
+    MPI_Cart_create(MPI_COMM_WORLD, dimensions, nSubdomains_.data(), periods, 1, &cartComm_); 
+    //TODO: check if true reordering also works
+    // After this call, the reordering of ranks is done
 
     // get own coordinates in Cartesian communicator
     MPI_Comm_rank(cartComm_, &ownRankNo_);                        // set ownRankNo_
@@ -127,4 +129,9 @@ std::array<int,2> Partitioning::nodeOffset() const
 int Partitioning::getNCellsGlobal() const
 {
     return nCellsGlobal_[0] * nCellsGlobal_[1];
+}
+
+MPI_Comm Partitioning::getCartComm() const
+{
+    return cartComm_;
 }

@@ -5,7 +5,9 @@
 #include <cmath>
 
 ParallelPressureSolver::ParallelPressureSolver(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
-    PressureSolver(discretization, epsilon, maximumNumberOfIterations), partitioning_(partitioning) {}
+    PressureSolver(discretization, epsilon, maximumNumberOfIterations), partitioning_(partitioning) {
+    cartComm_ = partitioning_->getCartComm();
+}
 
 void ParallelPressureSolver::computeResidualNorm() {
     double residual_norm_squared = 0.0;
@@ -26,7 +28,7 @@ void ParallelPressureSolver::computeResidualNorm() {
     double residual_norm_global = 0.0;
     // perform global reduction to sum up residual norms from all processes
     // blocking call is acceptable here since we need the result before proceeding
-    MPI_Allreduce(&residual_norm_squared, &residual_norm_global, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
+    MPI_Allreduce(&residual_norm_squared, &residual_norm_global, 1, MPI_DOUBLE, MPI_SUM, cartComm_);
     residualNorm_ = residual_norm_global / N_global;
 }
 
@@ -58,8 +60,8 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
         }
         // instantiate non-blocking sends and receives
-        MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop);
-        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestTop); 
+        MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop);
+        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop); 
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
@@ -71,8 +73,8 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
         }
-        MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestBottom);
-        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestBottom);
+        MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
+        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
     }
 
     if (partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -83,8 +85,8 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferLeft[j - pJBegin] = discretization_->p(pIBegin, j);
         }
-        MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestLeft);
-        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestLeft);
+        MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
+        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
     }
 
     if (partitioning_->ownPartitionContainsRightBoundary()) {
@@ -95,8 +97,8 @@ void ParallelPressureSolver::communicateAndSetBoundaryValues() {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferRight[j - pJBegin] = discretization_->p(pIEnd, j);
         }
-        MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestRight);
-        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, MPI_COMM_WORLD, &requestRight);
+        MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
+        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
     }
 
     // nachdem kommuniziert wurde setzren wir die ghost nodes mit den empfangenen werten für ränder die nicht am globalen rand liegen

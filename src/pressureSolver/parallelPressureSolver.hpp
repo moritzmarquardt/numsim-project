@@ -21,4 +21,5 @@ protected:
     void communicateAndSetBoundaryValues();
 
     std::shared_ptr<Partitioning> partitioning_;
+    MPI_Comm cartComm_;
 };

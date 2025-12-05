@@ -21,6 +21,13 @@ class ParallelComputation : public Computation {
          */
         void runSimulation() override;
 
+        /**
+         * Get the own MPI rank number
+         */
+        int getRankNo() const {
+            return partitioning_->ownRankNo();
+        }
+
     protected:
         /**
          * Apply and Communicate boundary values to the ghost nodes
@@ -39,4 +46,5 @@ class ParallelComputation : public Computation {
 
         std::unique_ptr<OutputWriterParaviewParallel> outputWriterParaview_;
         std::unique_ptr<OutputWriterTextParallel> outputWriterText_;
+        MPI_Comm cartComm_;
 };

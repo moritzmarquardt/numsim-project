@@ -28,11 +28,10 @@ int main(int argc, char *argv[])
   // emasure time for parallel execution
   MPI_Init(&argc, &argv);
   int rank;
-  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-
 
   ParallelComputation computation;
   computation.initialize(argc, argv);
+  rank = computation.getRankNo();
 
   double startTime = MPI_Wtime();
   computation.runSimulation();

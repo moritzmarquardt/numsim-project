@@ -76,6 +76,9 @@ public:
   //! get the global number of cells in the whole computational domain
   int getNCellsGlobal() const;
 
+  //! get the Cartesian communicator
+  MPI_Comm getCartComm() const;
+
   private:
     std::array<int,2> nCellsLocal_;    //< number of cells in own partition
     std::array<int,2> nCellsGlobal_;   //< global number of cells
