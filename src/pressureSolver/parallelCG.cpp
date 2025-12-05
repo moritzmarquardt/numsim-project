@@ -1,6 +1,5 @@
 #include "parallelCG.hpp"
 
-
 ParallelCG::ParallelCG(std::shared_ptr<Discretization> discretization, double epsilon,int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
     ParallelPressureSolver(discretization, epsilon, maximumNumberOfIterations, partitioning),
     dx2_(discretization_->dx() * discretization_->dx()),
@@ -80,9 +79,7 @@ void ParallelCG::solve() {
                 discretization_->p(i,j) += alpha_ * direction_(i,j);
                 residual_(i,j) -= alpha_ * w_(i,j);
 
-               double temp_ij = residual_(i,j) * diag_precond;
-               residualNew2_ += residual_(i,j) * temp_ij;
-               direction_(i,j) = temp_ij + (residualNew2_ / residualOld2_) * direction_(i,j); // store preconditioned residual in direction
+               residualNew2_ += residual_(i,j) * residual_(i,j) * diag_precond;
             }
         }
 
@@ -90,6 +87,13 @@ void ParallelCG::solve() {
         MPI_Iallreduce(MPI_IN_PLACE, &residualNew2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residualNew2);
         communicateAndSetBoundaryValuesForDirection();
         MPI_Wait(&request_residualNew2, MPI_STATUS_IGNORE);
+
+        for (int i = pIBegin; i <= pIEnd; i++) {
+            for (int j = pJBegin; j <= pJEnd; j++) {
+                direction_(i,j) = residual_(i,j) * diag_precond + (residualNew2_ / residualOld2_) * direction_(i,j); // update direction with preconditioned residual
+            }
+        }
+
 
         residualOld2_ = residualNew2_;
         
