@@ -134,7 +134,7 @@ void ParallelCG::communicateAndSetBoundaryValuesForDirection() {
         }
     } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
-            sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
+            sendBufferTop[i - pIBegin] = direction_(i, pJEnd);
         }
         // instantiate non-blocking sends and receives
         MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop);
