@@ -27,84 +27,72 @@ void ParallelCG::solve() {
     const int pJBegin = discretization_->pJBegin();
     const int pJEnd = discretization_->pJEnd();
 
-    rTr_ = 0.0;
+    residualOld2_ = 0.0;
+    const double diag_precond = 1.0 / (2.0 / dx2_ + 2.0 / dy2_); // diagonal preconditioner
 
     // compute initial residual r = b - A*p and set direction = r
     for (int i = pIBegin; i <= pIEnd; i++) {
         for (int j = pJBegin; j <= pJEnd; j++) {
             residual_(i,j) = discretization_->rhs(i,j) - ((discretization_->p(i+1,j) - 2.0 * discretization_->p(i,j) + discretization_->p(i-1,j)) / dx2_
         + (discretization_->p(i,j+1) - 2.0 * discretization_->p(i,j) + discretization_->p(i,j-1)) / dy2_);
-            direction_(i,j) = residual_(i,j);
-            rTr_ += residual_(i,j) * direction_(i,j);
+            direction_(i,j) = residual_(i,j) * diag_precond; // apply preconditioner
+            residualOld2_ += residual_(i,j) * direction_(i,j);
         }
     }
 
     MPI_Request request_residual;
-    MPI_Iallreduce(MPI_IN_PLACE, &rTr_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residual);
+    MPI_Iallreduce(MPI_IN_PLACE, &residualOld2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residual);
     communicateAndSetBoundaryValuesForDirection();
     MPI_Wait(&request_residual, MPI_STATUS_IGNORE);
 
-    if (rTr_ / N < eps_2) {
+    if (residualOld2_/ N < eps_2) {
         return; // initial guess is good enough
     }
 
     // main CG iteration loop
-    double wTw_ = 0.0;
-    double rTw_ = 0.0;
     double dTw_ = 0.0;
-    while (iter < maximumNumberOfIterations_ && rTr_ / N > eps_2) {
+    while (iter < maximumNumberOfIterations_ && residualOld2_ / N > eps_2) {
         iter++;
+
+        dTw_ = 0.0;
 
         // compute w = A * direction
         for (int i = pIBegin; i <= pIEnd; i++) {
             for (int j = pJBegin; j <= pJEnd; j++) {
-                const double w_ij =  ((direction_(i+1,j) - 2.0 * direction_(i,j) + direction_(i-1,j)) / dx2_
-            + (direction_(i,j+1) - 2.0 * direction_(i,j) + direction_(i,j-1)) / dy2_);
+                const double dir_ij = direction_(i,j);
+                const double w_ij =  ((direction_(i+1,j) - 2.0 * dir_ij + direction_(i-1,j)) / dx2_
+            + (direction_(i,j+1) - 2.0 * dir_ij + direction_(i,j-1)) / dy2_);
                 w_(i,j) = w_ij;
-                rTw_ += residual_(i,j) * w_ij;
-                wTw_ += w_ij * w_ij;
-                // rTr_ += residual_(i,j) * residual_(i,j);
-                dTw_ += direction_(i,j) * w_ij;
+                dTw_ += dir_ij * w_ij;
             }
         }
 
-        MPI_Request request_rTw, request_wTw, request_rTr, request_dTw;
-        MPI_Iallreduce(MPI_IN_PLACE, &rTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_rTw);
-        MPI_Iallreduce(MPI_IN_PLACE, &wTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_wTw);
-        // MPI_Iallreduce(MPI_IN_PLACE, &rTr_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_rTr);
+        MPI_Request request_dTw;
         MPI_Iallreduce(MPI_IN_PLACE, &dTw_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_dTw);
 
-        // MPI_Wait(&request_rTr, MPI_STATUS_IGNORE);
         MPI_Wait(&request_dTw, MPI_STATUS_IGNORE);
-        alpha_ = rTr_ / dTw_;
+        alpha_ = residualOld2_ / dTw_;
+
+        residualNew2_ = 0.0;
 
         for (int i = pIBegin; i <= pIEnd; i++) {
             for (int j = pJBegin; j <= pJEnd; j++) {
                 discretization_->p(i,j) += alpha_ * direction_(i,j);
                 residual_(i,j) -= alpha_ * w_(i,j);
+
+               double temp_ij = residual_(i,j) * diag_precond;
+               residualNew2_ += residual_(i,j) * temp_ij;
+               direction_(i,j) = temp_ij + (residualNew2_ / residualOld2_) * direction_(i,j); // store preconditioned residual in direction
             }
         }
 
-        MPI_Wait(&request_rTw, MPI_STATUS_IGNORE);
-        MPI_Wait(&request_wTw, MPI_STATUS_IGNORE);
-        rTrNew_ = rTr_ - 2 * alpha_ * rTw_ + alpha_ * alpha_ * wTw_;
-
-        if (rTrNew_ / N < eps_2) {
-            break; // converged
-        }
-
-        beta_ = rTrNew_ / rTr_;
-
-        for (int i = pIBegin; i <= pIEnd; i++) {
-            for (int j = pJBegin; j <= pJEnd; j++) {
-                direction_(i,j) = residual_(i,j) + beta_ * direction_(i,j);
-            }
-        }
+        MPI_Request request_residualNew2;
+        MPI_Iallreduce(MPI_IN_PLACE, &residualNew2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residualNew2);
         communicateAndSetBoundaryValuesForDirection();
-        rTr_ = rTrNew_;
-        wTw_ = 0.0;
-        rTw_ = 0.0;
-        dTw_ = 0.0;
+        MPI_Wait(&request_residualNew2, MPI_STATUS_IGNORE);
+
+        residualOld2_ = residualNew2_;
+        
     }
 
 communicateAndSetBoundaryValues();

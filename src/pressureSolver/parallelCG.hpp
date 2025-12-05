@@ -14,10 +14,9 @@ private:
     FieldVariable residual_;
     FieldVariable w_;
 
-    double rTr_;
+    double residualOld2_;
     double alpha_;
-    double beta_;
-    double rTrNew_;
+    double residualNew2_;
     double dx2_;
     double dy2_;
 
