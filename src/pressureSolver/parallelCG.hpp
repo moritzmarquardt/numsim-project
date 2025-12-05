@@ -5,9 +5,16 @@ class ParallelCG : public ParallelPressureSolver {
 public:
     ParallelCG(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning);
 
+    /**
+     * solve the system of the Poisson equation for pressure using the Conjugate Gradient method with diagonal preconditioning (multiplying by the inverse of the diagonal elements of the matrix)
+     */
     void solve() override;
 
 private:
+
+    /** 
+     * Communicate direction_ field variable boundary values with neighboring processes similar to communicateAndSetBoundaryValues for p field variable
+     */
     void communicateAndSetBoundaryValuesForDirection();
 
     FieldVariable direction_;
