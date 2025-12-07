@@ -1,4 +1,9 @@
 #include "parallelCG.hpp"
+#include <mpi.h>
+#include <cmath>
+#include <limits>
+#include <iostream>
+#include <cassert>
 
 ParallelCG::ParallelCG(std::shared_ptr<Discretization> discretization, double epsilon,int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
     ParallelPressureSolver(discretization, epsilon, maximumNumberOfIterations, partitioning),
@@ -15,6 +20,8 @@ ParallelCG::ParallelCG(std::shared_ptr<Discretization> discretization, double ep
         discretization_->meshWidth()))
     {}
 
+// Patched ParallelCG::solve() with safety and correctness fixes
+// Requires: <cassert>, <cmath>, <limits>, <iostream>, <mpi.h>
 void ParallelCG::solve() {
     const double eps_2 = epsilon_ * epsilon_;
     const int N = partitioning_->getNCellsGlobal(); // total number of real cells in all partitions
@@ -37,9 +44,10 @@ void ParallelCG::solve() {
     std::vector<double> dir_old;
     dir_old.resize(localSize);
 
+    int world_rank = 0;
+    MPI_Comm_rank(cartComm_, &world_rank);
+
     // --- preconditioner: block symmetric red-black Gauss-Seidel ---
-    // Writes preconditioned vector into `direction_` given `residual_`.
-    // Performs a small number of local symmetric red-black GS sweeps.
     auto applyBlockSGSPreconditioner = [&](int num_sweeps) {
         // initial guess: Jacobi
         for (int i = pIBegin; i <= pIEnd; ++i) {
@@ -80,6 +88,9 @@ void ParallelCG::solve() {
     };
     // --- end preconditioner ---
 
+    // Ensure solution p has valid halos before computing residual r = b - A*p
+    communicateAndSetBoundaryValues();
+
     // compute initial residual r = b - A*p
     for (int i = pIBegin; i <= pIEnd; ++i) {
         for (int j = pJBegin; j <= pJEnd; ++j) {
@@ -101,14 +112,21 @@ void ParallelCG::solve() {
         }
     }
 
-    // global sum
+    // global sum (wait before any other communicator calls to avoid ordering issues)
     MPI_Request request_residual;
     MPI_Iallreduce(MPI_IN_PLACE, &residualOld2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residual);
-    communicateAndSetBoundaryValuesForDirection();
     MPI_Wait(&request_residual, MPI_STATUS_IGNORE);
+    // now make sure direction halos are set for later A*direction
+    communicateAndSetBoundaryValuesForDirection();
+
+    // basic sanity checks
+    if (!std::isfinite(residualOld2_)) {
+        if (world_rank == 0) std::cerr << "ParallelCG::solve - NaN/Inf in initial residualOld2_: " << residualOld2_ << "\n";
+        return;
+    }
 
     if (residualOld2_ / N < eps_2) {
-        return; // initial guess is good enough
+        return; // initial guess is good enough (preconditioned inner product test retained)
     }
 
     // main CG iteration loop (we keep the two-reduction approach but with stronger preconditioner)
@@ -123,6 +141,8 @@ void ParallelCG::solve() {
                 dir_old[idx++] = direction_(i,j);
             }
         }
+        // safety: ensure we filled exactly localSize
+        assert(idx == localSize && "dir_old size mismatch");
 
         // compute w = A * direction
         dTw_local = 0.0;
@@ -136,19 +156,32 @@ void ParallelCG::solve() {
             }
         }
 
-        // global reduction for dTw
+        // global reduction for dTw (wait before other comms)
         double dTw_global = 0.0;
         MPI_Request request_dTw;
         MPI_Iallreduce(&dTw_local, &dTw_global, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_dTw);
-
         MPI_Wait(&request_dTw, MPI_STATUS_IGNORE);
 
-        if (dTw_global == 0.0) {
-            // breakdown, cannot continue
+        // robust check for breakdown or bad values
+        const double denom_tol = std::numeric_limits<double>::min() * 1e6; // tiny absolute threshold
+        if (!std::isfinite(dTw_global) || dTw_global <= denom_tol) {
+            if (world_rank == 0) {
+                std::cerr << "ParallelCG::solve - breakdown: d^T A d = " << dTw_global << " (tol=" << denom_tol << ")\n";
+            }
+            break;
+        }
+
+        // further safety: residualOld2_ must be finite
+        if (!std::isfinite(residualOld2_)) {
+            if (world_rank == 0) std::cerr << "ParallelCG::solve - nonfinite residualOld2_ before alpha computation\n";
             break;
         }
 
         alpha_ = residualOld2_ / dTw_global;
+        if (!std::isfinite(alpha_)) {
+            if (world_rank == 0) std::cerr << "ParallelCG::solve - nonfinite alpha: " << alpha_ << "\n";
+            break;
+        }
 
         // update solution p and residual r
         for (int i = pIBegin; i <= pIEnd; ++i) {
@@ -161,7 +194,7 @@ void ParallelCG::solve() {
         // apply preconditioner to new residual: compute z_{k+1} into direction_
         applyBlockSGSPreconditioner(num_sgs_sweeps);
 
-        // compute residualNew2_ = r^T z (local) and reduce
+        // compute residualNew2_ = r^T z (local) and reduce (wait before other comms)
         residualNew2_ = 0.0;
         for (int i = pIBegin; i <= pIEnd; ++i) {
             for (int j = pJBegin; j <= pJEnd; ++j) {
@@ -171,16 +204,25 @@ void ParallelCG::solve() {
 
         MPI_Request request_residualNew2;
         MPI_Iallreduce(MPI_IN_PLACE, &residualNew2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residualNew2);
-        // communicate direction halos so next iteration's A*direction sees correct ghost values
-        communicateAndSetBoundaryValuesForDirection();
         MPI_Wait(&request_residualNew2, MPI_STATUS_IGNORE);
+        // now safe to communicate halos for direction
+        communicateAndSetBoundaryValuesForDirection();
+
+        if (!std::isfinite(residualNew2_)) {
+            if (world_rank == 0) std::cerr << "ParallelCG::solve - nonfinite residualNew2_: " << residualNew2_ << "\n";
+            break;
+        }
 
         // compute beta and update search direction: p_{k+1} = z_{k+1} + beta * p_k
         double beta = 0.0;
-        if (residualOld2_ != 0.0) {
+        if (residualOld2_ != 0.0 && std::isfinite(residualOld2_)) {
             beta = residualNew2_ / residualOld2_;
         } else {
             beta = 0.0;
+        }
+        if (!std::isfinite(beta)) {
+            if (world_rank == 0) std::cerr << "ParallelCG::solve - nonfinite beta: " << beta << "\n";
+            break;
         }
 
         // update direction_ in-place using dir_old (which stored p_k)
@@ -190,9 +232,17 @@ void ParallelCG::solve() {
                 direction_(i,j) = direction_(i,j) + beta * dir_old[idx++];
             }
         }
+        // sanity
+        assert(idx == localSize && "dir_old consumption mismatch");
 
         // finalize for next iteration
         residualOld2_ = residualNew2_;
+
+        // guard against NaN/Inf in residualOld2_
+        if (!std::isfinite(residualOld2_)) {
+            if (world_rank == 0) std::cerr << "ParallelCG::solve - residualOld2_ became nonfinite at iter " << iter << "\n";
+            break;
+        }
     }
 
     // final halo exchange for p (solution)
