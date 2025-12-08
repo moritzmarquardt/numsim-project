@@ -1,9 +1,5 @@
 #include "parallelCG.hpp"
 #include <mpi.h>
-#include <cmath>
-#include <limits>
-#include <iostream>
-#include <cassert>
 
 ParallelCG::ParallelCG(std::shared_ptr<Discretization> discretization, double epsilon,int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
     ParallelPressureSolver(discretization, epsilon, maximumNumberOfIterations, partitioning),
