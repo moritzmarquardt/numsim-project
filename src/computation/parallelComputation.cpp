@@ -21,19 +21,19 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
     }
 
     // create pressure solver
-    // if (settings_.pressureSolver == "GaussSeidel") {
-    //     pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
-    // } else if (settings_.pressureSolver == "SOR") {
-    //     // TODO: calculate optimal omega (not in settings hardcoded)
-    //     pressureSolver_ = std::make_unique<RedBlackSOR>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, settings_.omega, partitioning_);
-    // } else if (settings_.pressureSolver == "CG") {
-    //     pressureSolver_ = std::make_unique<ParallelCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
-    // } else {
-    //     std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
-    //     std::exit(EXIT_FAILURE);
-    // }
-    // Hard code CG
-    pressureSolver_ = std::make_unique<ParallelCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
+    if (settings_.pressureSolver == "GaussSeidel") {
+        pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
+    } else if (settings_.pressureSolver == "SOR") {
+        // TODO: calculate optimal omega (not in settings hardcoded)
+        pressureSolver_ = std::make_unique<RedBlackSOR>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, settings_.omega, partitioning_);
+    } else if (settings_.pressureSolver == "CG") {
+        pressureSolver_ = std::make_unique<ParallelCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
+    } else {
+        std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
+        std::exit(EXIT_FAILURE);
+    }
+    // // Hard code CG
+    // pressureSolver_ = std::make_unique<ParallelCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
 
     // create output writers
     outputWriterParaview_ = std::make_unique<OutputWriterParaviewParallel>(discretization_, *partitioning_);
