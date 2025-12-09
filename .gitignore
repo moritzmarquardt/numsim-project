@@ -4,6 +4,8 @@ build/out/
 # VSCode
 .vscode/
 
+.venv/
+
 # Ignore build directories
 build/
 out/
