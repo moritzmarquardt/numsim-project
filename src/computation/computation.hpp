@@ -33,6 +33,8 @@ public:
      */
     void setTopUBoundary(double u);
 
+    void setSimNumber(int number);
+
 protected:
     /**
      * Compute the time step width dt based on the CFL condition and diffusion limits
@@ -70,6 +72,7 @@ protected:
     void computeVelocities();
 
     Settings settings_;
+    int simNumber_;
     std::shared_ptr<Discretization> discretization_;
     std::unique_ptr<PressureSolver> pressureSolver_;
     std::unique_ptr<OutputWriterParaview> outputWriterParaview_;

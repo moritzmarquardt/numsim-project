@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   // emasure time for parallel execution
   MPI_Init(&argc, &argv);
   int rank;
-  int num = 5;
+  int num = 101;
   std::vector<double> Re = linspace(500, 1500, num);
   std::vector<double> vel = linspace(0.5, 1.5, num);
     
@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
   for (int i = 0; i < num; ++i) {
     computation.setRe(Re[i]);
     computation.setTopUBoundary(vel[i]);
+    computation.setSimNumber(i);
 
     rank = computation.getRankNo();
 

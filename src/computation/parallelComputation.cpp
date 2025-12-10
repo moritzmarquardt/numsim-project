@@ -70,9 +70,13 @@ void ParallelComputation::runSimulation() {
         iterationCount++;
 
         // this was the fix!!!
-        if (currentTime >= nOutputs) {
-            outputWriterParaview_->writeFile(currentTime);
-            nOutputs = nOutputs + 1;
+        // if (currentTime >= nOutputs) {
+        //     outputWriterParaview_->writeFile(currentTime);
+        //     nOutputs = nOutputs + 1;
+        // }
+        // only last time step is written
+        if (currentTime >= settings_.endTime - time_eps) {
+            outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
         }
         
        

@@ -48,6 +48,10 @@ void Computation::setTopUBoundary(double u) {
     settings_.dirichletBcTop[0] = u;
 }
 
+void Computation::setSimNumber(int number) {
+    simNumber_ = number;
+}
+
 void Computation::runSimulation() {
     applyInitialBoundaryValues();
 

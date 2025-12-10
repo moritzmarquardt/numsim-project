@@ -23,6 +23,8 @@ public:
   //! write current velocities to file, filename is output_<count>.vti
   void writeFile(double currentTime);
 
+  void writeFileWithNumber(double currentTime, int simNumber);
+
 private:
 
   //! gather u,v and p values from all ranks to rank 0 and store them in the global field variables
