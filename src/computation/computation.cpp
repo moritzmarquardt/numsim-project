@@ -40,6 +40,14 @@ void Computation::initialize(int argc, char *argv[]) {
     outputWriterText_ = std::make_unique<OutputWriterText>(discretization_, *partitioning_);
 }
 
+void Computation::setRe(double re) {
+    settings_.re = re;
+}
+
+void Computation::setTopUBoundary(double u) {
+    settings_.dirichletBcTop[0] = u;
+}
+
 void Computation::runSimulation() {
     applyInitialBoundaryValues();
 
