@@ -63,6 +63,9 @@ simcl1:[numsim-project] >./set_up_and_cmake.sh
 - to then use the simcl1 computer inside that cluster use ```ssh -X simcl1```
 - then use slurm to submit jobs as described in [https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html](https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html) 
 
+### run python code and displaying matplotlib plots on local machine even tho the code is running on the wsl:
+- Install ```sudo apt install python3-tk```
+
 
 ## Helpful links:
 - [https://numsim-exercises.readthedocs.io/en/latest/exercise1/index.html](https://numsim-exercises.readthedocs.io/en/latest/exercise1/index.html)
