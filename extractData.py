@@ -33,18 +33,15 @@ for vti_file in vti_files:
     if point_data.GetNumberOfArrays() == 0:
         raise ValueError("No point data arrays found in the VTI file.")
 
-    uArray = point_data.GetArray(0)
-    vArray = point_data.GetArray(1)
+    # Array 0 is pressure, Array 1 is velocity vector (u, v, 0)
+    velocityArray = point_data.GetArray(1)  # This is the velocity vector with 3 components
 
-    # Convert to NumPy - extract scalar values
-    u_np = vtk_to_numpy(uArray)
-    v_np = vtk_to_numpy(vArray)
+    # Convert to NumPy - this gives us shape (n_points, 3) where columns are [u, v, w]
+    velocity_np = vtk_to_numpy(velocityArray)
 
-    # Handle case where arrays might have multiple components - take first component
-    if u_np.ndim > 1:
-        u_np = u_np[:, 0]
-    if v_np.ndim > 1:
-        v_np = v_np[:, 0]
+    # Extract u (component 0) and v (component 1)
+    u_np = velocity_np[:, 0]  # u component
+    v_np = velocity_np[:, 1]  # v component
 
     # Stack u and v as channels: shape (nx*ny*nz, 2)
     # Then reshape to (ny, nx, 2) for a 2D field
