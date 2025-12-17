@@ -57,8 +57,23 @@ class DataProcessor:
         )  # Now shape is (num_files, channels=2, ny, nx)
         print(f"Combined data shape: {data_matrix.shape}")
 
-        return np.array(all_data)
+        return np.array(data_matrix)
 
+    """
+    Normalize label and input data to [0, 1] range and generate min_max yaml file
+    Parameters:
+    ----------
+    label_data : np.array
+        Label data with shape (num_samples, channels=2, ny, nx)
+    input_data : np.array
+        Input data with shape (num_samples, channels=1, ny, nx)
+    Returns:
+    -------
+    data_scaled : np.array
+        Scaled label data with shape (num_samples, channels=2, ny, nx)
+    input_scaled : np.array
+        Scaled input data with shape (num_samples, channels=1, ny, nx)
+    """
     def normalizeData(self, label_data, input_data):
         u_min = label_data[:, 0, :, :].min()
         u_max = label_data[:, 0, :, :].max()
@@ -92,6 +107,19 @@ class DataProcessor:
 
         return data_scaled, input_scaled
 
+    """
+    Split data into train, test and validation sets and save as torch datasets
+    Parameters:
+    ----------
+    data_scaled : np.array
+        Scaled label data with shape (num_samples, channels=2, ny, nx)
+    input_scaled : np.array
+        Scaled input data with shape (num_samples, channels=1, ny, nx)
+    train_ratio : float
+        Ratio of training data
+    val_ratio : float
+        Ratio of validation data
+    """
     def train_test_val_split(self, data_scaled, input_scaled, train_ratio=0.8, val_ratio=0.1):
         indices = np.arange(input_scaled.shape[0])
         np.random.seed(42)
@@ -120,7 +148,9 @@ class DataProcessor:
             torch.FloatTensor(inputs),
             torch.FloatTensor(labels)
         )
-        torch.save(torch_dataset, f"{self.dataset_name}_{name}_dataset.pt")
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        save_path = os.path.join(dir_path, f"{self.dataset_name}_{name}_dataset.pt")
+        torch.save(torch_dataset, save_path)
 
     def generateInputData(
         self, velocities_range=(0.5, 1.5), num_samples=101, grid_shape=(21, 21)
@@ -133,7 +163,6 @@ class DataProcessor:
         )
         for i in range(num_samples):
             n = grid_shape[0]
-            print(n)
             input[i, 0,  n - 1, 1:n - 1] = velocities[i]
 
         return input
@@ -148,17 +177,11 @@ class DataProcessor:
         }
 
         # Save to yaml file
-        with open(str(self.dataset_name) + "_min_max.yaml", "w") as f:
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        save_path = os.path.join(dir_path, f"{self.dataset_name}_min_max.yaml")
+        with open(save_path, "w") as f:
             yaml.dump(min_max, f, default_flow_style=False)
 
         print("min_max.yaml file created successfully!")
         print("\nContents:")
         print(yaml.dump(min_max, default_flow_style=False))
-
-
-if __name__ == "__main__":
-    processor = DataProcessor("standard_lek")
-    all_label_data = processor.extractFromFiles("out/")
-    all_input_data = processor.generateInputData()
-    data_scaled, input_scaled = processor.normalizeData(all_label_data, all_input_data)
-    processor.train_test_val_split(data_scaled, input_scaled)

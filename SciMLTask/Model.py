@@ -1,6 +1,7 @@
 import torch.nn as nn
 import torch
 import matplotlib.pyplot as plt
+import os
 
 
 class Model(nn.Module):
@@ -72,24 +73,22 @@ class Model(nn.Module):
 
     def load_data(
         self,
-        train_labels,
-        train_input,
-        validation_labels,
-        validation_input,
-        test_labels,
-        test_input,
+        dataset_name,
     ):
-        self.train_dataset = torch.utils.data.TensorDataset(train_input, train_labels)
-        self.validation_dataset = torch.utils.data.TensorDataset(
-            validation_input, validation_labels
-        )
-        self.test_dataset = torch.utils.data.TensorDataset(test_input, test_labels)
+        self.dataset_name = dataset_name
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        # Use safe globals to allow loading TensorDataset
+        with torch.serialization.safe_globals([torch.utils.data.dataset.TensorDataset]):
+            self.train_dataset = torch.load(f"{dir_path}/{self.dataset_name}_train_dataset.pt")
+            print(f"shape of loaded train inputs: {self.train_dataset.tensors[0].shape} and labels: {self.train_dataset.tensors[1].shape}")
+            self.validation_dataset = torch.load(f"{dir_path}/{self.dataset_name}_validation_dataset.pt")
+            self.test_dataset = torch.load(f"{dir_path}/{self.dataset_name}_test_dataset.pt")
 
         self.train_loader = torch.utils.data.DataLoader(
             self.train_dataset, batch_size=16, shuffle=True
         )
 
-    def initalize_model(self):
+    def initialize_model(self):
         self.criterion = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
