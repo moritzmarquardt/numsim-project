@@ -8,6 +8,7 @@ if __name__ == "__main__":
     all_input_data = processor.generateInputData()
     data_scaled, input_scaled = processor.normalizeData(all_label_data, all_input_data)
     processor.train_test_val_split(data_scaled, input_scaled)
+    # processor.printDataInfo()
 
     model = Model()
     model.load_data("standard_lek")

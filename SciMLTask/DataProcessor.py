@@ -1,6 +1,7 @@
 import pyvista as pv
 import numpy as np
 import os
+from sklearn.model_selection import train_test_split
 import yaml
 import torch
 
@@ -120,28 +121,40 @@ class DataProcessor:
     val_ratio : float
         Ratio of validation data
     """
-    def train_test_val_split(self, data_scaled, input_scaled, train_ratio=0.8, val_ratio=0.1):
+    def train_test_val_split(self, data_scaled, input_scaled, train_ratio=0.8, test_ratio=0.1):
         indices = np.arange(input_scaled.shape[0])
         np.random.seed(42)
         np.random.shuffle(indices)
 
         train_count = int(len(indices) * train_ratio)
-        val_count = int(len(indices) * val_ratio)
+        test_count = int(len(indices) * test_ratio)
         train_indices = indices[:train_count]
-        val_indices = indices[train_count:train_count + val_count]
-        test_indices = indices[train_count + val_count:]
+        val_indices = indices[train_count + test_count:]
+        test_indices = indices[train_count: train_count + test_count]
 
         train_inputs = input_scaled[train_indices]
         train_labels = data_scaled[train_indices]
-        self.saveAsTorchDataset(train_inputs, train_labels, "train")
 
         val_inputs = input_scaled[val_indices]
         val_labels = data_scaled[val_indices]
-        self.saveAsTorchDataset(val_inputs, val_labels, "validation")
 
         test_inputs = input_scaled[test_indices]
         test_labels = data_scaled[test_indices]
+
+        # First split: separate out test set (10%)
+        # train_val_input, test_inputs, train_val_labels, test_labels = train_test_split(
+        #     input_scaled, data_scaled, test_size=0.1, random_state=42, shuffle=True
+        # )
+
+        # # Second split: separate training (80%) and validation (10%) from the remaining 90%
+        # train_inputs, val_inputs, train_labels, val_labels = train_test_split(
+        #     train_val_input, train_val_labels, test_size=0.1111, random_state=42, shuffle=True
+        # )
+
+        # Save datasets as torch datasets
         self.saveAsTorchDataset(test_inputs, test_labels, "test")
+        self.saveAsTorchDataset(val_inputs, val_labels, "validation")
+        self.saveAsTorchDataset(train_inputs, train_labels, "train")
 
     def saveAsTorchDataset(self, inputs, labels, name):
         torch_dataset = torch.utils.data.TensorDataset(

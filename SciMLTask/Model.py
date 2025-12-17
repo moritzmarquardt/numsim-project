@@ -9,39 +9,39 @@ class Model(nn.Module):
         super(Model, self).__init__()
         # First layer
         self.conv1 = nn.Conv2d(
-            in_channels=1, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=1, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu1 = nn.ReLU()
 
         # Five hidden layers
         self.conv2 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu2 = nn.ReLU()
 
         self.conv3 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu3 = nn.ReLU()
 
         self.conv4 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu4 = nn.ReLU()
 
         self.conv5 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu5 = nn.ReLU()
 
         self.conv6 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
         self.relu6 = nn.ReLU()
 
         # Final layer
         self.conv7 = nn.Conv2d(
-            in_channels=16, out_channels=2, kernel_size=7, padding="same", stride=1
+            in_channels=16, out_channels=2, kernel_size=7, padding="same", stride=1, dtype=torch.float64
         )
 
     def forward(self, x):
