@@ -1,9 +1,11 @@
 import pyvista as pv
 import numpy as np
 import os
-from sklearn.model_selection import train_test_split
 import yaml
 import torch
+import matplotlib.pyplot as plt
+
+# torch.set_default_dtype(torch.float64)
 
 
 class DataProcessor:
@@ -43,6 +45,12 @@ class DataProcessor:
             u_np = velocityArray[:, 0]  # u component
             v_np = velocityArray[:, 1]  # v component
 
+            # change orrientation from lowest index starting at bottom-left to top-left
+            u_np = u_np.reshape((dims[2], dims[1], dims[0]))  # (nz, ny, nx)
+            v_np = v_np.reshape((dims[2], dims[1], dims[0]))  # (nz, ny, nx)
+            u_np = np.flip(u_np, axis=1).reshape(-1)  # (nx*ny*nz,)
+            v_np = np.flip(v_np, axis=1).reshape(-1)  # (nx*ny*nz,)
+
             # Stack u and v as channels: shape (nx*ny*nz, 2)
             # Then reshape to (ny, nx, 2) for a 2D field
             uv_combined = np.stack([u_np, v_np], axis=-1)  # (nx*ny*nz, 2)
@@ -59,6 +67,25 @@ class DataProcessor:
         print(f"Combined data shape: {data_matrix.shape}")
 
         return np.array(data_matrix)
+    
+    def plot_sample_data(self, data_matrix, sample_index=0):
+        sample = data_matrix[sample_index]  # shape (channels=2, ny, nx)
+        u_component = sample[0, :, :]
+        v_component = sample[1, :, :]
+
+        plt.figure(figsize=(12, 5))
+
+        plt.subplot(1, 2, 1)
+        plt.title("U Component")
+        plt.imshow(u_component, cmap="viridis")
+        plt.colorbar()
+
+        plt.subplot(1, 2, 2)
+        plt.title("V Component")
+        plt.imshow(v_component, cmap="viridis")
+        plt.colorbar()
+
+        plt.show()
 
     """
     Normalize label and input data to [0, 1] range and generate min_max yaml file
@@ -162,7 +189,8 @@ class DataProcessor:
             torch.FloatTensor(labels)
         )
         dir_path = os.path.dirname(os.path.abspath(__file__))
-        save_path = os.path.join(dir_path, f"{self.dataset_name}_{name}_dataset.pt")
+        save_path = os.path.join(dir_path, f"out_ml/{self.dataset_name}_{name}_dataset.pt")
+        print(f"Saving {name} dataset to {save_path}")
         torch.save(torch_dataset, save_path)
 
     def generateInputData(
@@ -176,9 +204,21 @@ class DataProcessor:
         )
         for i in range(num_samples):
             n = grid_shape[0]
-            input[i, 0,  n - 1, 1:n - 1] = velocities[i]
+            input[i, 0,  0, 1:n - 1] = velocities[i]
 
         return input
+    
+    def plot_sample_input_data(self, input_matrix, sample_index=0):
+        sample = input_matrix[sample_index]  # shape (channels=1, ny, nx)
+        u_component = sample[0, :, :]
+
+        plt.figure(figsize=(6, 5))
+
+        plt.title("Input U Component")
+        plt.imshow(u_component, cmap="viridis")
+        plt.colorbar()
+
+        plt.show()
 
     def generateYAML(self, u_min, u_max, v_min, v_max, input_min, input_max):
         min_max = {
@@ -191,7 +231,8 @@ class DataProcessor:
 
         # Save to yaml file
         dir_path = os.path.dirname(os.path.abspath(__file__))
-        save_path = os.path.join(dir_path, f"{self.dataset_name}_min_max.yaml")
+        save_path = os.path.join(dir_path, f"out_ml/{self.dataset_name}_min_max.yaml")
+        print(f"Saving min_max.yaml to {save_path}")
         with open(save_path, "w") as f:
             yaml.dump(min_max, f, default_flow_style=False)
 

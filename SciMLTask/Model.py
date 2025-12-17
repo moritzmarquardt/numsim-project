@@ -3,45 +3,47 @@ import torch
 import matplotlib.pyplot as plt
 import os
 
+# torch.set_default_dtype(torch.float64)
+
 
 class Model(nn.Module):
     def __init__(self):
         super(Model, self).__init__()
         # First layer
         self.conv1 = nn.Conv2d(
-            in_channels=1, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=1, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu1 = nn.ReLU()
 
         # Five hidden layers
         self.conv2 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu2 = nn.ReLU()
 
         self.conv3 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu3 = nn.ReLU()
 
         self.conv4 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu4 = nn.ReLU()
 
         self.conv5 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu5 = nn.ReLU()
 
         self.conv6 = nn.Conv2d(
-            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=16, kernel_size=7, padding="same", stride=1
         )
         self.relu6 = nn.ReLU()
 
         # Final layer
         self.conv7 = nn.Conv2d(
-            in_channels=16, out_channels=2, kernel_size=7, padding="same", stride=1, dtype=torch.float64
+            in_channels=16, out_channels=2, kernel_size=7, padding="same", stride=1
         )
 
     def forward(self, x):
@@ -76,7 +78,8 @@ class Model(nn.Module):
         dataset_name,
     ):
         self.dataset_name = dataset_name
-        dir_path = os.path.dirname(os.path.abspath(__file__))
+        dir_path = os.path.dirname(os.path.abspath(__file__)) + "/out_ml"
+        print(f"Loading datasets from {dir_path}")
         # Use safe globals to allow loading TensorDataset
         with torch.serialization.safe_globals([torch.utils.data.dataset.TensorDataset]):
             self.train_dataset = torch.load(f"{dir_path}/{self.dataset_name}_train_dataset.pt")
@@ -92,6 +95,8 @@ class Model(nn.Module):
         self.criterion = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # ensure all parameters are float64 (double)
+        # self.double()
         self.to(self.device)
 
     def train_model(self, epochs=4000):
@@ -133,11 +138,15 @@ class Model(nn.Module):
         self.train_losses = train_losses
         self.val_losses = val_losses
 
-    def save_model(self, path="model.pt"):
-        torch.save(self.state_dict(), path)
+    def save_model(self, filename="model.pt"):
+        dir_path = os.path.dirname(os.path.abspath(__file__)) + "/out_ml"
+        print(f"Saving model to {dir_path}/{filename}")
+        torch.save(self.state_dict(), f"{dir_path}/{filename}")
 
-    def load_model(self, path="model.pt"):
-        self.load_state_dict(torch.load(path))
+    def load_model(self, filename="model.pt"):
+        dir_path = os.path.dirname(os.path.abspath(__file__)) + "/out_ml"
+        print(f"Loading model from {dir_path}/{filename}")
+        self.load_state_dict(torch.load(f"{dir_path}/{filename}"))
         self.to(self.device)
 
     def plot_loss(self):
@@ -180,3 +189,34 @@ class Model(nn.Module):
             input_device = input_data.to(self.device)
             outputs = self(input_device)
         return outputs
+
+    def plot_test_results(self, num_samples=3):
+        self.eval()
+        with torch.no_grad():
+            test_inputs = self.test_dataset.tensors[0][:num_samples].to(self.device)
+            test_labels = self.test_dataset.tensors[1][:num_samples].to(self.device)
+            test_outputs = self(test_inputs)
+
+        test_inputs = test_inputs.cpu().numpy()
+        test_labels = test_labels.cpu().numpy()
+        test_outputs = test_outputs.cpu().numpy()
+
+        for i in range(num_samples):
+            plt.figure(figsize=(15, 5))
+
+            plt.subplot(1, 3, 1)
+            plt.title("Input")
+            plt.imshow(test_inputs[i, 0, :, :], cmap="viridis")
+            plt.colorbar()
+
+            plt.subplot(1, 3, 2)
+            plt.title("Ground Truth")
+            plt.imshow(test_labels[i, 0, :, :], cmap="viridis")
+            plt.colorbar()
+
+            plt.subplot(1, 3, 3)
+            plt.title("Prediction")
+            plt.imshow(test_outputs[i, 0, :, :], cmap="viridis")
+            plt.colorbar()
+
+            plt.show()
