@@ -9,3 +9,5 @@ build/out/
 # Ignore build directories
 build/
 out/
+
+__pycache__/
