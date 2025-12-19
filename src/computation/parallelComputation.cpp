@@ -75,12 +75,14 @@ void ParallelComputation::runSimulation() {
         //     nOutputs = nOutputs + 1;
         // }
         // only last time step is written
-        if (currentTime >= settings_.endTime - time_eps) {
-            outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
-        }
+        // if (currentTime >= settings_.endTime - time_eps) {
+        //     outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
+        // }
         
        
     }
+    outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
+
 }
 
 void ParallelComputation::computeTimeStepWidth() {
