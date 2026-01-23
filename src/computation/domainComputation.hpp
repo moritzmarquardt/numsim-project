@@ -46,6 +46,8 @@ class DomainComputation : public Computation {
         
         void computeVelocities() override;
 
+        void computeTimeStepWidth() override;
+
         // all the stencils of dicretisation and donor cell need to be implemented using ghost stencils
         double computeD2uDx2(double u_ip1_j, double u_i_j, double u_im1_j) const;
 

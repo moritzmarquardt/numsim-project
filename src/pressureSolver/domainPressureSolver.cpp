@@ -15,14 +15,37 @@ void DomainPressureSolver::computeResidualNorm() {
     const double dx2 = discretization_->dx() * discretization_->dx();
     const double dy2 = discretization_->dy() * discretization_->dy();
 
-    for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
-        for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
-            const double rhs_ij = discretization_->rhs(i,j);
-            const double p_xx = (discretization_->p(i+1,j) - 2.0 * discretization_->p(i,j) + discretization_->p(i-1,j)) / dx2;
-            const double p_yy = (discretization_->p(i,j+1) - 2.0 * discretization_->p(i,j) + discretization_->p(i,j-1)) / dy2;
-            const double residual_ij = rhs_ij - (p_xx + p_yy);
-            residual_norm_squared += residual_ij * residual_ij;
+    std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+    int n = fluidCellsInfo.size();
+    for (int idx = 0; idx < n; idx++) {
+        CellInfo cellInfo = fluidCellsInfo[idx];
+        int i = cellInfo.cellIndexPartition[0];
+        int j = cellInfo.cellIndexPartition[1];
+
+        double p_i_j = discretization_->p(i,j);
+        double p_ip1_j = discretization_->p(i+1,j);
+        double p_im1_j = discretization_->p(i-1,j);
+        double p_i_jp1 = discretization_->p(i,j+1);
+        double p_i_jm1 = discretization_->p(i,j-1);
+
+        if (cellInfo.topIsBoundaryFace()) {
+            p_i_jp1 = p_i_j;
         }
+        if (cellInfo.bottomIsBoundaryFace()) {
+            p_i_jm1 = p_i_j;
+        }
+        if (cellInfo.leftIsBoundaryFaceC()) {
+            p_im1_j = p_i_j;
+        }
+        if (cellInfo.rightIsBoundaryFace()) {
+            p_ip1_j = p_i_j;
+        }
+
+        const double rhs_ij = discretization_->rhs(i,j);
+        const double p_xx = (p_ip1_j - 2.0 * p_i_j + p_im1_j) / dx2;
+        const double p_yy = (p_i_jp1 - 2.0 * p_i_j + p_i_jm1) / dy2;
+        const double residual_ij = rhs_ij - (p_xx + p_yy);
+        residual_norm_squared += residual_ij * residual_ij;
     }
 
     double residual_norm_global = 0.0;
@@ -32,7 +55,7 @@ void DomainPressureSolver::computeResidualNorm() {
     residualNorm_ = residual_norm_global / N_global;
 }
 
-void DomainPressureSolver::communicateAndSetBoundaryValues() {
+void DomainPressureSolver::communicateGhostValues() {
 
     //TODO: Idea for improvement: optimize setting of boundary values by only sending/receiving the necessary values instead of the whole rows/columns (only red boundary values needed or black)
     
@@ -51,11 +74,7 @@ void DomainPressureSolver::communicateAndSetBoundaryValues() {
     MPI_Request requestTop, requestBottom, requestLeft, requestRight;
 
     // Fill easy boundary conditions that do not need communication
-    if (partitioning_->ownPartitionContainsTopBoundary()) {
-        for (int i = pIBegin; i <= pIEnd; i++) {
-            discretization_->p(i, pJEnd + 1) = discretization_->p(i, pJEnd);
-        }
-    } else {
+    if (!partitioning_->ownPartitionContainsTopBoundary()) {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
         }
@@ -65,11 +84,7 @@ void DomainPressureSolver::communicateAndSetBoundaryValues() {
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
-    if (partitioning_->ownPartitionContainsBottomBoundary()) {
-        for (int i = pIBegin; i <= pIEnd; i++) {
-            discretization_->p(i, pJBegin - 1) = discretization_->p(i, pJBegin);
-        }
-    } else {
+    if (!partitioning_->ownPartitionContainsBottomBoundary()) {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
         }
@@ -77,11 +92,7 @@ void DomainPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
     }
 
-    if (partitioning_->ownPartitionContainsLeftBoundary()) {
-        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
-            discretization_->p(pIBegin - 1, j) = discretization_->p(pIBegin, j);
-        }
-    } else {
+    if (!partitioning_->ownPartitionContainsLeftBoundary()) {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferLeft[j - pJBegin] = discretization_->p(pIBegin, j);
         }
@@ -89,11 +100,7 @@ void DomainPressureSolver::communicateAndSetBoundaryValues() {
         MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
     }
 
-    if (partitioning_->ownPartitionContainsRightBoundary()) {
-        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
-            discretization_->p(pIEnd + 1, j) = discretization_->p(pIEnd, j);
-        }
-    } else {
+    if (!partitioning_->ownPartitionContainsRightBoundary()) {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferRight[j - pJBegin] = discretization_->p(pIEnd, j);
         }

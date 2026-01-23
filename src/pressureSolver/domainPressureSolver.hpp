@@ -19,7 +19,7 @@ public:
 
 protected:
     void computeResidualNorm() override;
-    void communicateAndSetBoundaryValues();
+    void communicateGhostValues();
 
     std::shared_ptr<Partitioning> partitioning_;
     std::shared_ptr<Domain> domain_;

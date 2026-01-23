@@ -393,7 +393,7 @@ void DomainComputation::computePreliminaryVelocities() {
                 if (cellInfo.faceTop.dirichletV.has_value()) {
                     calcB = false;
                 } else if (cellInfo.faceTop.neumannV.has_value()) {
-                    v_i_j = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
+                    discretization_->g(i,j) = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
                     calcB = false;
                 }
             }
@@ -401,8 +401,9 @@ void DomainComputation::computePreliminaryVelocities() {
                 if (cellInfo.faceRight.dirichletU.has_value()) {
                     calcA = false;
                 } else if (cellInfo.faceRight.neumannU.has_value()) {
-                    u_i_j = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
+                    discretization_->f(i,j) = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
                     calcA = false;                 
+
                 }
                 if (cellInfo.faceRight.dirichletV.has_value()) {
                     v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
@@ -450,7 +451,7 @@ void DomainComputation::computePreliminaryVelocities() {
                 discretization_->g(i,j) = v_i_j + B_ij * dt_;   
             }      
 
-        } else if (!domain_.obstacleCheck(i, j)) {
+        } else {
             // inner cell, normal stencil
             double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j)) - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
             discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
@@ -484,4 +485,31 @@ void DomainComputation::computePressure() {
 
 void DomainComputation::computeVelocities() {
     // update velocities based on new pressure field
+    std::vector<CellInfo> fluidCellsInfo = domain_.getInfoListFluid();
+    int n = fluidCellsInfo.size();
+    for (int idx = 0; idx < n; idx++) {
+        CellInfo cellInfo = fluidCellsInfo[idx];
+        int i = cellInfo.cellIndexPartition[0];
+        int j = cellInfo.cellIndexPartition[1];
+
+        double p_i_j = discretization_->p(i,j);
+        double p_ip1_j = discretization_->p(i+1,j);
+        double p_i_jp1 = discretization_->p(i,j+1);
+
+
+        if (!cellInfo.rightIsBoundaryFace()){
+            discretization_->u(i,j) = discretization_->f(i,j) - dt_ * computeDpDx(p_ip1_j, p_i_j);
+        } else if (cellInfo.faceRight.neumannU.has_value()) {
+            // right boundary face
+            discretization_->u(i,j) = discretization_->f(i,j);
+        }
+
+        if (!cellInfo.topIsBoundaryFace()){
+            discretization_->v(i,j) = discretization_->g(i,j) - dt_ * computeDpDy(p_i_jp1, p_i_j);
+        } else if (cellInfo.faceTop.neumannV.has_value()) {
+            // top boundary face
+            discretization_->v(i,j) = discretization_->g(i,j);
+        }
+
+    }
 }
