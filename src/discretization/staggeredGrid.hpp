@@ -4,6 +4,7 @@
 #include <array>
 #include <memory>
 #include "storage/FieldVariable.hpp"
+#include "domain.hpp"
 #include "partitioning/partitioning.hpp"
 
 class StaggeredGrid
@@ -96,6 +97,16 @@ public:
     // get the last valid index for p in y direction
     int pJEnd() const;
 
+    CellType cellType(int i, int j) const;
+    void setCellType(int i, int j, CellType type);
+    bool isFluidCell(int i, int j) const;
+    int countFluidCellsLocal() const;
+    int countActivePressureCellsLocal() const;
+    void setPressureReferenceCell(int i, int j);
+    bool isPressureReferenceCell(int i, int j) const;
+    bool isActivePressureCell(int i, int j) const;
+    bool hasPressureReferenceCell() const;
+    std::array<int,2> pressureReferenceCell() const;
 
 protected:
     FieldVariable u_;
@@ -104,6 +115,10 @@ protected:
     FieldVariable rhs_;
     FieldVariable f_;
     FieldVariable g_;
+    std::vector<CellType> cellTypes_;
+    bool hasPressureReference_ = false;
+    int pressureReferenceI_ = -1;
+    int pressureReferenceJ_ = -1;
 
     const std::array< int, 2 > nCells_;
     const std::array< double, 2 > meshWidth_;

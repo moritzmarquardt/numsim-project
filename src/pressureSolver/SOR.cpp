@@ -19,9 +19,17 @@ void SOR::solve() {
         iter++;
         for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
             for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
-                const double ersterTerm = (discretization_->p(i+1,j) + discretization_->p(i-1,j)) / dx2;
-                const double zweiterTerm = (discretization_->p(i,j+1) + discretization_->p(i,j-1)) / dy2;
-                discretization_->p(i,j) = (1 - omega_)* discretization_->p(i,j) + 
+                if (!discretization_->isActivePressureCell(i, j)) {
+                    continue;
+                }
+                const double p_ij = discretization_->p(i,j);
+                const double p_e = discretization_->isFluidCell(i+1,j) ? discretization_->p(i+1,j) : p_ij;
+                const double p_w = discretization_->isFluidCell(i-1,j) ? discretization_->p(i-1,j) : p_ij;
+                const double p_n = discretization_->isFluidCell(i,j+1) ? discretization_->p(i,j+1) : p_ij;
+                const double p_s = discretization_->isFluidCell(i,j-1) ? discretization_->p(i,j-1) : p_ij;
+                const double ersterTerm = (p_e + p_w) / dx2;
+                const double zweiterTerm = (p_n + p_s) / dy2;
+                discretization_->p(i,j) = (1 - omega_)* p_ij + 
                 omega_ * lek * (ersterTerm + zweiterTerm - discretization_->rhs(i,j));
             }
         }

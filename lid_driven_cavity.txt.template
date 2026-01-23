@@ -19,6 +19,11 @@ dirichletLeftY   = 0
 dirichletRightX  = 0
 dirichletRightY  = 0
 
+# Domain/BC mask (optional)
+# domainFile = path/to/domain.txt
+# inflowVelocityX = 0.0
+# inflowVelocityY = 0.0
+
 # Discretization parameters
 nCellsX = 20          # number of cells in x and y direction
 nCellsY = 20

@@ -28,20 +28,33 @@ void PressureSolver::setBoundaryValues() {
 
 void PressureSolver::computeResidualNorm() {
     double residual_norm_squared = 0.0;
-    const int N = discretization_->nCells()[0] * discretization_->nCells()[1]; // number of real cells
+    int N = 0;
     const double dx2 = discretization_->dx() * discretization_->dx();
     const double dy2 = discretization_->dy() * discretization_->dy();
 
     for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
         for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
+            if (!discretization_->isActivePressureCell(i, j)) {
+                continue;
+            }
+            N++;
             const double rhs_ij = discretization_->rhs(i,j);
-            const double p_xx = (discretization_->p(i+1,j) - 2.0 * discretization_->p(i,j) + discretization_->p(i-1,j)) / dx2;
-            const double p_yy = (discretization_->p(i,j+1) - 2.0 * discretization_->p(i,j) + discretization_->p(i,j-1)) / dy2;
+            const double p_ij = discretization_->p(i,j);
+            const double p_e = discretization_->isFluidCell(i+1,j) ? discretization_->p(i+1,j) : p_ij;
+            const double p_w = discretization_->isFluidCell(i-1,j) ? discretization_->p(i-1,j) : p_ij;
+            const double p_n = discretization_->isFluidCell(i,j+1) ? discretization_->p(i,j+1) : p_ij;
+            const double p_s = discretization_->isFluidCell(i,j-1) ? discretization_->p(i,j-1) : p_ij;
+            const double p_xx = (p_e - 2.0 * p_ij + p_w) / dx2;
+            const double p_yy = (p_n - 2.0 * p_ij + p_s) / dy2;
             const double residual_ij = rhs_ij - (p_xx + p_yy);
             residual_norm_squared += residual_ij * residual_ij;
         }
     }
-    residualNorm_ = residual_norm_squared / N;
+    if (N > 0) {
+        residualNorm_ = residual_norm_squared / N;
+    } else {
+        residualNorm_ = 0.0;
+    }
 
 }
 

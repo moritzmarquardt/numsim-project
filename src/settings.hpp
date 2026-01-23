@@ -23,6 +23,9 @@ struct Settings
   std::array<double,2> dirichletBcTop;     //< prescribed values of u,v at top of domain
   std::array<double,2> dirichletBcLeft;    //< prescribed values of u,v at left of domain
   std::array<double,2> dirichletBcRight;   //< prescribed values of u,v at right of domain
+  std::array<double,2> inflowVelocity{0., 0.}; //< prescribed inflow velocity for i-cells
+  std::string domainFile;                 //< domain file with cell types
+  std::array<int,2> pressureReferenceCell{-1, -1}; //< global i,j cell index for pressure reference
 
   std::string pressureSolver = "SOR";      //< which pressure solver to use, "GaussSeidel" or "SOR"
   double omega = 1.0;                //< overrelaxation factor

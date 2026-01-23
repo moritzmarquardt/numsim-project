@@ -8,6 +8,7 @@ project(numsim_parallel LANGUAGES CXX C)
 add_executable(${PROJECT_NAME}
     main.cpp
     settings.cpp
+    domain.cpp
     output_writer/output_writer.cpp
     output_writer/output_writer_paraview.cpp
     output_writer/output_writer_text.cpp

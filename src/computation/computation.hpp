@@ -23,18 +23,6 @@ public:
      */
     virtual void runSimulation();
 
-    /**
-     * Set the Reynolds number
-     */
-    void setRe(double re);
-
-    /**
-     * Set the velocity at the top boundary
-     */
-    void setTopUBoundary(double u);
-
-    void setSimNumber(int number);
-
 protected:
     /**
      * Compute the time step width dt based on the CFL condition and diffusion limits

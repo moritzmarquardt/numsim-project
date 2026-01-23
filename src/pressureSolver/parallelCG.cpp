@@ -18,7 +18,9 @@ ParallelCG::ParallelCG(std::shared_ptr<Discretization> discretization, double ep
 
 void ParallelCG::solve() {
     const double eps_2 = epsilon_ * epsilon_;
-    const int N = partitioning_->getNCellsGlobal(); // total number of real cells in all partitions
+    const int N_local = discretization_->countActivePressureCellsLocal();
+    int N = 0;
+    MPI_Allreduce(&N_local, &N, 1, MPI_INT, MPI_SUM, cartComm_);
     int iter = 0;
 
     const int pIBegin = discretization_->pIBegin();
@@ -32,9 +34,19 @@ void ParallelCG::solve() {
     // compute initial residual r = b - A*p and set direction = z = M^{-1} r
     for (int i = pIBegin; i <= pIEnd; i++) {
         for (int j = pJBegin; j <= pJEnd; j++) {
+            if (!discretization_->isActivePressureCell(i, j)) {
+                residual_(i,j) = 0.0;
+                direction_(i,j) = 0.0;
+                continue;
+            }
+            const double p_ij = discretization_->p(i,j);
+            const double p_e = discretization_->isFluidCell(i+1,j) ? discretization_->p(i+1,j) : p_ij;
+            const double p_w = discretization_->isFluidCell(i-1,j) ? discretization_->p(i-1,j) : p_ij;
+            const double p_n = discretization_->isFluidCell(i,j+1) ? discretization_->p(i,j+1) : p_ij;
+            const double p_s = discretization_->isFluidCell(i,j-1) ? discretization_->p(i,j-1) : p_ij;
             residual_(i,j) = discretization_->rhs(i,j)
-                - ((discretization_->p(i+1,j) - 2.0 * discretization_->p(i,j) + discretization_->p(i-1,j)) / dx2_
-                 + (discretization_->p(i,j+1) - 2.0 * discretization_->p(i,j) + discretization_->p(i,j-1)) / dy2_);
+                - ((p_e - 2.0 * p_ij + p_w) / dx2_
+                 + (p_n - 2.0 * p_ij + p_s) / dy2_);
             direction_(i,j) = residual_(i,j) * diag_precond; // apply scalar preconditioner: z = M^{-1} r
             residualOld2_ += residual_(i,j) * direction_(i,j); // r^T z (local)
         }
@@ -47,7 +59,7 @@ void ParallelCG::solve() {
     communicateAndSetBoundaryValuesForDirection();
     MPI_Wait(&request_residual, MPI_STATUS_IGNORE);
 
-    if (residualOld2_ / N < eps_2) {
+    if (N == 0 || residualOld2_ / N < eps_2) {
         return; // initial guess is good enough
     }
 
@@ -61,9 +73,17 @@ void ParallelCG::solve() {
         double local_dots[2] = {0.0, 0.0};
         for (int i = pIBegin; i <= pIEnd; i++) {
             for (int j = pJBegin; j <= pJEnd; j++) {
+            if (!discretization_->isActivePressureCell(i, j)) {
+                w_(i,j) = 0.0;
+                continue;
+            }
                 const double dir_ij = direction_(i,j);
-                const double w_ij = ((direction_(i+1,j) - 2.0 * dir_ij + direction_(i-1,j)) / dx2_
-                                  + (direction_(i,j+1) - 2.0 * dir_ij + direction_(i,j-1)) / dy2_);
+                const double d_e = discretization_->isFluidCell(i+1,j) ? direction_(i+1,j) : dir_ij;
+                const double d_w = discretization_->isFluidCell(i-1,j) ? direction_(i-1,j) : dir_ij;
+                const double d_n = discretization_->isFluidCell(i,j+1) ? direction_(i,j+1) : dir_ij;
+                const double d_s = discretization_->isFluidCell(i,j-1) ? direction_(i,j-1) : dir_ij;
+                const double w_ij = ((d_e - 2.0 * dir_ij + d_w) / dx2_
+                                  + (d_n - 2.0 * dir_ij + d_s) / dy2_);
                 w_(i,j) = w_ij;
                 local_dots[0] += dir_ij * w_ij; // dTw_local = z^T w
                 local_dots[1] += w_ij * w_ij;   // wTw_local = w^T w
@@ -104,6 +124,9 @@ void ParallelCG::solve() {
         // update solution p, residual r, and direction z in-place (use global alpha and beta)
         for (int i = pIBegin; i <= pIEnd; i++) {
             for (int j = pJBegin; j <= pJEnd; j++) {
+            if (!discretization_->isActivePressureCell(i, j)) {
+                continue;
+            }
                 discretization_->p(i,j) += alpha_ * direction_(i,j);
                 residual_(i,j) -= alpha_ * w_(i,j);
                 const double temp_ij = residual_(i,j) * diag_precond; // z_new = M^{-1} r_new

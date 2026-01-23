@@ -9,7 +9,8 @@ StaggeredGrid::StaggeredGrid(std::array<int, 2> nCells, std::array<double, 2> me
             g_(FieldVariable({nCells[0] + 3, nCells[1] + 3}, {-1.5 * meshWidth[0], -1 * meshWidth[1]}, meshWidth)),
             p_(FieldVariable({nCells[0] + 3, nCells[1] + 3}, {-1.5 * meshWidth[0], -1.5 * meshWidth[1]}, meshWidth)),
             rhs_(FieldVariable({nCells[0] + 3, nCells[1] + 3}, {-1.5 * meshWidth[0], -1.5 * meshWidth[1]}, meshWidth)),
-            partitioning_ (partitioning){
+            partitioning_ (partitioning),
+            cellTypes_(static_cast<size_t>((nCells[0] + 3) * (nCells[1] + 3)), CellType::Obstacle){
                 containsLeftBoundary_ = partitioning_->ownPartitionContainsLeftBoundary();
                 containsRightBoundary_ = partitioning_->ownPartitionContainsRightBoundary();
                 containsBottomBoundary_ = partitioning_->ownPartitionContainsBottomBoundary();
@@ -151,4 +152,72 @@ int StaggeredGrid::pJBegin() const {
 
 int StaggeredGrid::pJEnd() const {
     return nCells_[1] + 1;
+}
+
+CellType StaggeredGrid::cellType(int i, int j) const {
+    const int width = nCells_[0] + 3;
+    const int height = nCells_[1] + 3;
+    if (i < 0 || j < 0 || i >= width || j >= height) {
+        return CellType::Obstacle;
+    }
+    return cellTypes_[static_cast<size_t>(j * width + i)];
+}
+
+void StaggeredGrid::setCellType(int i, int j, CellType type) {
+    const int width = nCells_[0] + 3;
+    const int height = nCells_[1] + 3;
+    if (i < 0 || j < 0 || i >= width || j >= height) {
+        return;
+    }
+    cellTypes_[static_cast<size_t>(j * width + i)] = type;
+}
+
+bool StaggeredGrid::isFluidCell(int i, int j) const {
+    return cellType(i, j) == CellType::Fluid;
+}
+
+int StaggeredGrid::countFluidCellsLocal() const {
+    int count = 0;
+    for (int i = pIBegin(); i <= pIEnd(); ++i) {
+        for (int j = pJBegin(); j <= pJEnd(); ++j) {
+            if (isFluidCell(i, j)) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+int StaggeredGrid::countActivePressureCellsLocal() const {
+    int count = 0;
+    for (int i = pIBegin(); i <= pIEnd(); ++i) {
+        for (int j = pJBegin(); j <= pJEnd(); ++j) {
+            if (isActivePressureCell(i, j)) {
+                count++;
+            }
+        }
+    }
+    return count;
+}
+
+void StaggeredGrid::setPressureReferenceCell(int i, int j) {
+    pressureReferenceI_ = i;
+    pressureReferenceJ_ = j;
+    hasPressureReference_ = (i >= 0 && j >= 0);
+}
+
+bool StaggeredGrid::isPressureReferenceCell(int i, int j) const {
+    return hasPressureReference_ && i == pressureReferenceI_ && j == pressureReferenceJ_;
+}
+
+bool StaggeredGrid::isActivePressureCell(int i, int j) const {
+    return isFluidCell(i, j) && !isPressureReferenceCell(i, j);
+}
+
+bool StaggeredGrid::hasPressureReferenceCell() const {
+    return hasPressureReference_;
+}
+
+std::array<int,2> StaggeredGrid::pressureReferenceCell() const {
+    return {pressureReferenceI_, pressureReferenceJ_};
 }

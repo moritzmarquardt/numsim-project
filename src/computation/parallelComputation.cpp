@@ -1,5 +1,29 @@
 #include "parallelComputation.hpp"
+#include "domain.hpp"
 #include <cmath>
+#include <limits>
+
+namespace {
+double outflowUValue(const Discretization &disc, int i, int j, bool fluidLeft, bool fluidRight) {
+    if (fluidLeft && i - 1 >= disc.uIBegin()) {
+        return disc.u(i - 1, j);
+    }
+    if (fluidRight && i + 1 <= disc.uIEnd()) {
+        return disc.u(i + 1, j);
+    }
+    return disc.u(i, j);
+}
+
+double outflowVValue(const Discretization &disc, int i, int j, bool fluidBottom, bool fluidTop) {
+    if (fluidBottom && j - 1 >= disc.vJBegin()) {
+        return disc.v(i, j - 1);
+    }
+    if (fluidTop && j + 1 <= disc.vJEnd()) {
+        return disc.v(i, j + 1);
+    }
+    return disc.v(i, j);
+}
+} // namespace
 
 void ParallelComputation::initialize(int argc, char *argv[]) {
     
@@ -7,6 +31,7 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
 
     partitioning_ = std::make_shared<Partitioning>();
     partitioning_->initialize(settings_.nCells);
+    cartComm_ = partitioning_->getCartComm();
     std::array<int,2> nCellsLocal = partitioning_->nCellsLocal();
 
     // calculate mesh width
@@ -18,6 +43,60 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
         discretization_ = std::make_shared<DonorCell>(nCellsLocal, meshWidth_, settings_.alpha, partitioning_);
     } else {
         discretization_ = std::make_shared<CentralDifferences>(nCellsLocal, meshWidth_,partitioning_);
+    }
+
+    const std::array<int,2> nodeOffset = partitioning_->nodeOffset();
+    if (settings_.domainFile.empty()) {
+        for (int i = 0; i < nCellsLocal[0]; ++i) {
+            for (int j = 0; j < nCellsLocal[1]; ++j) {
+                discretization_->setCellType(i + 2, j + 2, CellType::Fluid);
+            }
+        }
+    } else {
+        Domain domain;
+        domain.loadFromFile(settings_.domainFile, settings_.nCells);
+        for (int i = 0; i < nCellsLocal[0]; ++i) {
+            for (int j = 0; j < nCellsLocal[1]; ++j) {
+                const int globalI = nodeOffset[0] + i;
+                const int globalJ = nodeOffset[1] + j;
+                discretization_->setCellType(i + 2, j + 2, domain.cellTypeGlobal(globalI, globalJ));
+            }
+        }
+    }
+
+    int refGlobalI = settings_.pressureReferenceCell[0];
+    int refGlobalJ = settings_.pressureReferenceCell[1];
+    const std::array<int,2> nCellsGlobal = partitioning_->nCellsGlobal();
+    if (refGlobalI < 0 || refGlobalJ < 0) {
+        int localKey = std::numeric_limits<int>::max();
+        for (int j = 0; j < nCellsLocal[1]; ++j) {
+            for (int i = 0; i < nCellsLocal[0]; ++i) {
+                if (discretization_->isFluidCell(i + 2, j + 2)) {
+                    const int globalI = nodeOffset[0] + i;
+                    const int globalJ = nodeOffset[1] + j;
+                    localKey = globalJ * nCellsGlobal[0] + globalI;
+                    break;
+                }
+            }
+            if (localKey != std::numeric_limits<int>::max()) {
+                break;
+            }
+        }
+        int globalKey = std::numeric_limits<int>::max();
+        MPI_Allreduce(&localKey, &globalKey, 1, MPI_INT, MPI_MIN, cartComm_);
+        if (globalKey != std::numeric_limits<int>::max()) {
+            refGlobalI = globalKey % nCellsGlobal[0];
+            refGlobalJ = globalKey / nCellsGlobal[0];
+        }
+    }
+    if (refGlobalI >= 0 && refGlobalJ >= 0) {
+        if (refGlobalI >= nodeOffset[0] && refGlobalI < nodeOffset[0] + nCellsLocal[0]
+            && refGlobalJ >= nodeOffset[1] && refGlobalJ < nodeOffset[1] + nCellsLocal[1]) {
+            const int localI = refGlobalI - nodeOffset[0] + 2;
+            const int localJ = refGlobalJ - nodeOffset[1] + 2;
+            discretization_->setPressureReferenceCell(localI, localJ);
+            discretization_->p(localI, localJ) = 0.0;
+        }
     }
 
     // create pressure solver
@@ -39,8 +118,6 @@ void ParallelComputation::initialize(int argc, char *argv[]) {
     outputWriterParaview_ = std::make_unique<OutputWriterParaviewParallel>(discretization_, *partitioning_);
     outputWriterText_ = std::make_unique<OutputWriterTextParallel>(discretization_, *partitioning_);
 
-    //Set cartComm_ member
-    cartComm_ = partitioning_->getCartComm();
 }
 
 void ParallelComputation::runSimulation() {
@@ -70,18 +147,14 @@ void ParallelComputation::runSimulation() {
         iterationCount++;
 
         // this was the fix!!!
-        // if (currentTime >= nOutputs) {
-        //     outputWriterParaview_->writeFile(currentTime);
-        //     nOutputs = nOutputs + 1;
-        // }
-        // only last time step is written
-        // if (currentTime >= settings_.endTime - time_eps) {
-        //     outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
-        // }
-        
+        if (currentTime >= nOutputs) {
+             outputWriterParaview_->writeFile(currentTime);
+             outputWriterText_->writeFile(currentTime);
+             nOutputs = nOutputs + 1;
+        }
        
     }
-    outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
+
 
 }
 
@@ -113,6 +186,7 @@ void ParallelComputation::computeTimeStepWidth() {
 }
 
 void ParallelComputation::applyBoundaryValues() {
+    if (settings_.domainFile.empty()) {
     const int uIBegin = discretization_->uIBegin();
     const int uIEnd = discretization_->uIEnd();
     const int uJBegin = discretization_->uJBegin();
@@ -253,9 +327,207 @@ void ParallelComputation::applyBoundaryValues() {
             discretization_->v(vIEnd + 1,j) = sendBufferRightV[j - vJBegin];
         }
     }
+        return;
+    }
+
+    const int uIBegin = discretization_->uIBegin();
+    const int uIEnd = discretization_->uIEnd();
+    const int uJBegin = discretization_->uJBegin();
+    const int uJEnd = discretization_->uJEnd();
+
+    const int vIBegin = discretization_->vIBegin();
+    const int vIEnd = discretization_->vIEnd();
+    const int vJBegin = discretization_->vJBegin();
+    const int vJEnd = discretization_->vJEnd();
+
+    // buffers for sending and receiving data
+    std::vector<double> sendBufferTopU(uIEnd - uIBegin + 1, 0.0);
+    std::vector<double> sendBufferTopV(vIEnd - vIBegin + 1, 0.0);
+    std::vector<double> sendBufferBottomU(uIEnd - uIBegin + 1, 0.0);
+    std::vector<double> sendBufferBottomV(vIEnd - vIBegin + 1, 0.0);
+    std::vector<double> sendBufferLeftU(uJEnd - uJBegin + 1, 0.0);
+    std::vector<double> sendBufferLeftV(vJEnd - vJBegin + 1, 0.0);
+    std::vector<double> sendBufferRightU(uJEnd - uJBegin + 1, 0.0);
+    std::vector<double> sendBufferRightV(vJEnd - vJBegin + 1, 0.0);
+
+    MPI_Request requestsTop, requestsBottom, requestsLeft, requestsRight;
+    const int TAG_U = 0;
+    const int TAG_V = 1;
+
+    if (partitioning_->ownPartitionContainsTopBoundary()) {
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            discretization_->u(i,uJEnd + 1) = discretization_->u(i,uJEnd);
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            discretization_->v(i,vJEnd + 1) = discretization_->v(i,vJEnd);
+        }
+    } else {
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            sendBufferTopU[i - uIBegin] = discretization_->u(i,uJEnd);
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            sendBufferTopV[i - vIBegin] = discretization_->v(i,vJEnd - 1);
+        }
+        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsTop);
+        MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsTop);
+
+        MPI_Irecv(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsTop);
+        MPI_Irecv(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsTop);
+    }
+
+    if (partitioning_->ownPartitionContainsBottomBoundary()) {
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            discretization_->u(i,uJBegin - 1) = discretization_->u(i,uJBegin);
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            discretization_->v(i,vJBegin - 1) = discretization_->v(i,vJBegin);
+        }
+    } else {
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            sendBufferBottomU[i - uIBegin] = discretization_->u(i,uJBegin);
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            sendBufferBottomV[i - vIBegin] = discretization_->v(i,vJBegin + 1);
+        }
+        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsBottom);
+        MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsBottom);
+
+        MPI_Irecv(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsBottom);
+        MPI_Irecv(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsBottom);
+    }
+
+    if (partitioning_->ownPartitionContainsLeftBoundary()) {
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            discretization_->u(uIBegin - 1,j) = discretization_->u(uIBegin,j);
+        }
+        for (int j = vJBegin - 1; j <= vJEnd + 1; j++) {
+            discretization_->v(vIBegin - 1,j) = discretization_->v(vIBegin,j);
+        }
+    } else {
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            sendBufferLeftU[j - uJBegin] = discretization_->u(uIBegin + 1,j);
+        }
+        for (int j = vJBegin; j <= vJEnd; j++) {
+            sendBufferLeftV[j - vJBegin] = discretization_->v(vIBegin,j);
+        }
+        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsLeft);
+        MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsLeft);
+
+        MPI_Irecv(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsLeft);
+        MPI_Irecv(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsLeft);
+    }
+
+    if (partitioning_->ownPartitionContainsRightBoundary()) {
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            discretization_->u(uIEnd + 1,j) = discretization_->u(uIEnd,j);
+        }
+        for (int j = vJBegin - 1; j <= vJEnd + 1; j++) {
+            discretization_->v(vIEnd + 1,j) = discretization_->v(vIEnd,j);
+        }
+    } else {
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            sendBufferRightU[j - uJBegin] = discretization_->u(uIEnd - 1,j);
+        }
+        for (int j = vJBegin; j <= vJEnd; j++) {
+            sendBufferRightV[j - vJBegin] = discretization_->v(vIEnd,j);
+        }
+        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRight);
+        MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRight);
+
+        MPI_Irecv(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRight);
+        MPI_Irecv(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRight);
+    }
+
+    if (!partitioning_->ownPartitionContainsTopBoundary()) {
+        MPI_Wait(&requestsTop, MPI_STATUS_IGNORE);
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            discretization_->u(i,uJEnd + 1) = sendBufferTopU[i - uIBegin];
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            discretization_->v(i,vJEnd + 1) = sendBufferTopV[i - vIBegin];
+        }
+    }
+    if (!partitioning_->ownPartitionContainsBottomBoundary()) {
+        MPI_Wait(&requestsBottom, MPI_STATUS_IGNORE);
+        for (int i = uIBegin; i <= uIEnd; i++) {
+            discretization_->u(i,uJBegin - 1) = sendBufferBottomU[i - uIBegin];
+        }
+        for (int i = vIBegin; i <= vIEnd; i++) {
+            discretization_->v(i,vJBegin - 1) = sendBufferBottomV[i - vIBegin];
+        }
+    }
+    if (!partitioning_->ownPartitionContainsLeftBoundary()) {
+        MPI_Wait(&requestsLeft, MPI_STATUS_IGNORE);
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            discretization_->u(uIBegin - 1,j) = sendBufferLeftU[j - uJBegin];
+        }
+        for (int j = vJBegin; j <= vJEnd; j++) {
+            discretization_->v(vIBegin - 1,j) = sendBufferLeftV[j - vJBegin];
+        }
+    }
+    if (!partitioning_->ownPartitionContainsRightBoundary()) {
+        MPI_Wait(&requestsRight, MPI_STATUS_IGNORE);
+        for (int j = uJBegin; j <= uJEnd; j++) {
+            discretization_->u(uIEnd + 1,j) = sendBufferRightU[j - uJBegin];
+        }
+        for (int j = vJBegin; j <= vJEnd; j++) {
+            discretization_->v(vIEnd + 1,j) = sendBufferRightV[j - vJBegin];
+        }
+    }
+
+    for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) {
+        for (int j = discretization_->uJBegin(); j <= discretization_->uJEnd(); j++) {
+            const CellType left = discretization_->cellType(i, j);
+            const CellType right = discretization_->cellType(i + 1, j);
+            const bool fluidLeft = (left == CellType::Fluid);
+            const bool fluidRight = (right == CellType::Fluid);
+            if (fluidLeft && fluidRight) {
+                continue;
+            }
+            const CellType bcType = fluidLeft ? right : left;
+            double value = 0.0;
+            if (bcType == CellType::Inflow) {
+                value = settings_.inflowVelocity[0];
+            } else if (bcType == CellType::Outflow) {
+                value = outflowUValue(*discretization_, i, j, fluidLeft, fluidRight);
+            } else if (bcType == CellType::Slip) {
+                value = 0.0;
+            } else {
+                value = 0.0;
+            }
+            discretization_->u(i, j) = value;
+            discretization_->f(i, j) = value;
+        }
+    }
+
+    for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
+        for (int j = discretization_->vJBegin(); j <= discretization_->vJEnd(); j++) {
+            const CellType bottom = discretization_->cellType(i, j);
+            const CellType top = discretization_->cellType(i, j + 1);
+            const bool fluidBottom = (bottom == CellType::Fluid);
+            const bool fluidTop = (top == CellType::Fluid);
+            if (fluidBottom && fluidTop) {
+                continue;
+            }
+            const CellType bcType = fluidBottom ? top : bottom;
+            double value = 0.0;
+            if (bcType == CellType::Inflow) {
+                value = settings_.inflowVelocity[1];
+            } else if (bcType == CellType::Outflow) {
+                value = outflowVValue(*discretization_, i, j, fluidBottom, fluidTop);
+            } else if (bcType == CellType::Slip) {
+                value = 0.0;
+            } else {
+                value = 0.0;
+            }
+            discretization_->v(i, j) = value;
+            discretization_->g(i, j) = value;
+        }
+    }
 }
 
 void ParallelComputation::applyInitialBoundaryValues() {
+    if (settings_.domainFile.empty()) {
     if (partitioning_->ownPartitionContainsBottomBoundary()) {
         for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
             const int j_bottom_bc = discretization_->vJBegin() - 1;
@@ -284,4 +556,8 @@ void ParallelComputation::applyInitialBoundaryValues() {
             discretization_->f(i_right_bc, j) = settings_.dirichletBcRight[0]; // right
         }
     }
+        return;
+    }
+
+    applyBoundaryValues();
 }

@@ -1,0 +1,40 @@
+# Karman vortex street example
+# Run ./numsim src/karman_vortex_street.txt
+
+# Problem description
+physicalSizeX = 4.0
+physicalSizeY = 2.0
+endTime = 20.0
+re = 150
+
+gX = 0.0
+gY = 0.0
+
+# Dirichlet boundary conditions (used only if domainFile is empty)
+dirichletBottomX = 0
+dirichletBottomY = 0
+dirichletTopX    = 0
+dirichletTopY    = 0
+dirichletLeftX   = 0
+dirichletLeftY   = 0
+dirichletRightX  = 0
+dirichletRightY  = 0
+
+# Domain/BC mask
+domainFile = src/karman_vortex_street_domain.txt
+inflowVelocityX = 1.0
+inflowVelocityY = 0.0
+
+# Discretization parameters
+nCellsX = 80
+nCellsY = 40
+useDonorCell = true
+alpha = 0.5
+tau = 0.5
+maximumDt = 0.05
+
+# Solver parameters
+pressureSolver = CG
+omega = 1.6
+epsilon = 1e-5
+maximumNumberOfIterations = 1e4

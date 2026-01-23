@@ -11,25 +11,40 @@ ParallelPressureSolver::ParallelPressureSolver(std::shared_ptr<Discretization> d
 
 void ParallelPressureSolver::computeResidualNorm() {
     double residual_norm_squared = 0.0;
-    const int N_global = partitioning_->getNCellsGlobal(); // global number of real cells
+    int N_local = 0;
     const double dx2 = discretization_->dx() * discretization_->dx();
     const double dy2 = discretization_->dy() * discretization_->dy();
 
     for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
         for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {
+            if (!discretization_->isActivePressureCell(i, j)) {
+                continue;
+            }
+            N_local++;
             const double rhs_ij = discretization_->rhs(i,j);
-            const double p_xx = (discretization_->p(i+1,j) - 2.0 * discretization_->p(i,j) + discretization_->p(i-1,j)) / dx2;
-            const double p_yy = (discretization_->p(i,j+1) - 2.0 * discretization_->p(i,j) + discretization_->p(i,j-1)) / dy2;
+            const double p_ij = discretization_->p(i,j);
+            const double p_e = discretization_->isFluidCell(i+1,j) ? discretization_->p(i+1,j) : p_ij;
+            const double p_w = discretization_->isFluidCell(i-1,j) ? discretization_->p(i-1,j) : p_ij;
+            const double p_n = discretization_->isFluidCell(i,j+1) ? discretization_->p(i,j+1) : p_ij;
+            const double p_s = discretization_->isFluidCell(i,j-1) ? discretization_->p(i,j-1) : p_ij;
+            const double p_xx = (p_e - 2.0 * p_ij + p_w) / dx2;
+            const double p_yy = (p_n - 2.0 * p_ij + p_s) / dy2;
             const double residual_ij = rhs_ij - (p_xx + p_yy);
             residual_norm_squared += residual_ij * residual_ij;
         }
     }
 
     double residual_norm_global = 0.0;
+    int N_global = 0;
     // perform global reduction to sum up residual norms from all processes
     // blocking call is acceptable here since we need the result before proceeding
     MPI_Allreduce(&residual_norm_squared, &residual_norm_global, 1, MPI_DOUBLE, MPI_SUM, cartComm_);
-    residualNorm_ = residual_norm_global / N_global;
+    MPI_Allreduce(&N_local, &N_global, 1, MPI_INT, MPI_SUM, cartComm_);
+    if (N_global > 0) {
+        residualNorm_ = residual_norm_global / N_global;
+    } else {
+        residualNorm_ = 0.0;
+    }
 }
 
 void ParallelPressureSolver::communicateAndSetBoundaryValues() {

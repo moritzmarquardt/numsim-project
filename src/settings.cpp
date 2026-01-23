@@ -106,6 +106,21 @@ void Settings::loadFromFile(std::string filename)
     else if (parameterName == "dirichletRightY"){
       dirichletBcRight[1] = atof(value.c_str());
     }
+    else if (parameterName == "inflowVelocityX"){
+      inflowVelocity[0] = atof(value.c_str());
+    }
+    else if (parameterName == "inflowVelocityY"){
+      inflowVelocity[1] = atof(value.c_str());
+    }
+    else if (parameterName == "domainFile"){
+      domainFile = value;
+    }
+    else if (parameterName == "pressureReferenceI"){
+      pressureReferenceCell[0] = atoi(value.c_str());
+    }
+    else if (parameterName == "pressureReferenceJ"){
+      pressureReferenceCell[1] = atoi(value.c_str());
+    }
     else if (parameterName == "nCellsX"){
       nCells[0] = atoi(value.c_str());
     }
@@ -161,6 +176,9 @@ void Settings::printSettings(){
             << ", top: (" << dirichletBcTop[0] << "," << dirichletBcTop[1] << ")"
             << ", left: (" << dirichletBcLeft[0] << "," << dirichletBcLeft[1] << ")"
             << ", right: (" << dirichletBcRight[0] << "," << dirichletBcRight[1] << ")" << std::endl
+            << "  inflowVelocity: (" << inflowVelocity[0] << "," << inflowVelocity[1] << ")"
+            << ", domainFile: " << domainFile
+            << ", pressureReferenceCell: (" << pressureReferenceCell[0] << "," << pressureReferenceCell[1] << ")" << std::endl
             << "  useDonorCell: " << std::boolalpha << useDonorCell << ", alpha: " << alpha << std::endl
             << "  pressureSolver: " << pressureSolver << ", omega: " << omega << ", epsilon: " << epsilon << ", maximumNumberOfIterations: " << maximumNumberOfIterations << std::endl;
 }
