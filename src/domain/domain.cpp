@@ -22,17 +22,3 @@ void Domain::readDomainFile(const std::string& filename) {
     
     file.close();
 }
-
-std::unique_ptr<Array2D> Domain::fluidMaskPartition() {
-    // Implement fluid mask partitioning logic here
-    // This should return a mask indicating which cells are fluid cells
-    
-    // Example implementation:
-    std::array<int,2> nCellsLocal = partitioning_->nCellsLocal();
-    auto mask = std::make_unique<Array2D>(nCellsLocal);
-    
-    // Initialize all cells as fluid (1) or obstacle (0)
-    // You'll need to implement this based on your domain file format
-    
-    return mask;
-}

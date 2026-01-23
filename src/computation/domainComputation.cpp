@@ -513,3 +513,30 @@ void DomainComputation::computeVelocities() {
 
     }
 }
+
+void DomainComputation::computeTimeStepWidth() {
+    // compute time step width based on CFL condition
+    double dx = discretization_->dx();
+    double dy = discretization_->dy();
+
+    double dx2 = dx * dx;
+    double dy2 = dy * dy;  
+
+    double dt_diff_cond = 0.5 * settings_.re * (dx2 * dy2) / (dx2 + dy2);
+    double dt_conv_cond_local = std::min(dx / discretization_->u().computeMaxAbs(), dy / discretization_->v().computeMaxAbs());
+
+    MPI_Request time_request;
+    double dt_conv_cond_global = 0.0;
+    // perform global reduction to find minimum dt_conv_cond across all processes
+    MPI_Iallreduce(&dt_conv_cond_local, &dt_conv_cond_global, 1, MPI_DOUBLE, MPI_MIN, cartComm_, &time_request);
+    MPI_Wait(&time_request, MPI_STATUS_IGNORE);
+
+    double dt_prelim = settings_.tau * std::min(dt_diff_cond, dt_conv_cond_global);
+
+    if (dt_prelim < settings_.maximumDt) {
+        dt_ = dt_prelim;
+    } else {
+        dt_ = settings_.maximumDt;
+        std::cout << "Warning: Time step width limited by maximumDt!" << std::endl;
+    }
+}
