@@ -18,14 +18,22 @@ class Domain {
         void readDomainFile(const std::string& filename);
 
         /**
-         * Get the fluid mask for the local partition.
+         * Check if cell of index (i,j) is an obstacle
          */
-        std::unique_ptr<Array2D> fluidMaskPartition();
+        std::unique_ptr<Array2D> obstacleCheck(int i, int j);
 
         // getter for boundaryInfoListAll_
-        std::vector<CellInfo> getBoundaryInfoListAll() {
+        std::vector<CellInfo> getInfoListAll() {
             return *boundaryInfoListAll_;
         }
+
+        /**
+         * Get all cells with info that are fluid cells (no obstacle cells)
+         */
+        std::vector<CellInfo> getInfoListFluid() const;
+
+        std::vector<CellInfo> getRedListFluid() const;
+        std::vector<CellInfo> getBlackListFluid() const;
 
     private:
         const Settings* settings_;

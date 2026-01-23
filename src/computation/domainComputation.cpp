@@ -23,8 +23,9 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     }
 
     // create pressure solver
+    // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     if (settings_.pressureSolver == "GaussSeidel") {
-        pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
+        pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
     } else if (settings_.pressureSolver == "SOR") {
         // TODO: calculate optimal omega (not in settings hardcoded)
         pressureSolver_ = std::make_unique<RedBlackSOR>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, settings_.omega, partitioning_);
@@ -108,7 +109,7 @@ void DomainComputation::computeTimeStepWidth() {
 
 void DomainComputation::applyInitialBoundaryValues() {
     //it is sufficient to only go though all cells and only look at the right and top face since then we will go through all faces exactly once. the values set here are only when we have dirichlet BCs directly orthogonally flowing through the face direction. These are onyl set once in the beginning and then never touched again.
-    std::vector<CellInfo> allCellsInfo = domain_.getBoundaryInfoListAll();
+    std::vector<CellInfo> allCellsInfo = domain_.getInfoListAll();
     int n = allCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
         CellInfo cellInfo = allCellsInfo[idx];
@@ -118,7 +119,7 @@ void DomainComputation::applyInitialBoundaryValues() {
             double faceBCValue; // only stores the value of the faceBC that is orthogonal to face orientation.
             // top face
             if (cellInfo.topIsBoundaryFace()) {
-                faceBCValue = cellInfo.faceTop.dirichletY.value();
+                faceBCValue = cellInfo.faceTop.dirichletV.value();
                 if (faceBCValue != 0.0) {
                     discretization_->v(i, j) = faceBCValue;
                     discretization_->g(i, j) = faceBCValue;
@@ -126,7 +127,7 @@ void DomainComputation::applyInitialBoundaryValues() {
             }
             // right face
             if (cellInfo.rightIsBoundaryFace()) {
-                faceBCValue = cellInfo.faceRight.dirichletX.value();
+                faceBCValue = cellInfo.faceRight.dirichletU.value();
                 if (faceBCValue != 0.0) {
                     discretization_->u(i, j) = faceBCValue;
                     discretization_->f(i, j) = faceBCValue;
@@ -352,7 +353,7 @@ double DomainComputation::computeDuvDy(double u_i_j, double u_i_jp1, double u_i_
 
 
 void DomainComputation::computePreliminaryVelocities() {
-    std::vector<CellInfo> allCellsInfo = domain_.getBoundaryInfoListAll();
+    std::vector<CellInfo> allCellsInfo = domain_.getInfoListFluid();
     int n = allCellsInfo.size();
     double dx = discretization_->dx();
     for (int idx = 0; idx < n; idx++) {
@@ -378,16 +379,78 @@ void DomainComputation::computePreliminaryVelocities() {
             double v_i_jm1 = discretization_->v(i,j-1);
             double v_ip1_jm1 = discretization_->v(i+1,j-1);
             double v_i_jp1 = discretization_->v(i,j+1);
+            bool calcB = true;
+            bool calcA = true;
+            double dy = discretization_->dy();
+            double dx = discretization_->dx();
 
-            if 
+            if (topBC) {
+                if (cellInfo.faceTop.dirichletU.has_value()) {
+                    u_i_jp1 = 2.0 * cellInfo.faceTop.dirichletU.value() - u_i_j;
+                }  else if (cellInfo.faceTop.neumannU.has_value()) {
+                    u_i_jp1 = u_i_j + cellInfo.faceTop.neumannU.value() * dy;                    
+                }
+                if (cellInfo.faceTop.dirichletV.has_value()) {
+                    calcB = false;
+                } else if (cellInfo.faceTop.neumannV.has_value()) {
+                    v_i_j = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
+                    calcB = false;
+                }
+            }
+            if (rightBC) {
+                if (cellInfo.faceRight.dirichletU.has_value()) {
+                    calcA = false;
+                } else if (cellInfo.faceRight.neumannU.has_value()) {
+                    u_i_j = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
+                    calcA = false;                 
+                }
+                if (cellInfo.faceRight.dirichletV.has_value()) {
+                    v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
+                }  else if (cellInfo.faceRight.neumannV.has_value()) {
+                    v_ip1_j = v_i_j + cellInfo.faceRight.neumannV.value() * dx;
+                }
+            }
+            if (leftBC) {
+                if (cellInfo.faceLeft.dirichletU.has_value()) {
+                    // do nothing
+                    continue;
+                } else if (cellInfo.faceLeft.neumannU.has_value()) { //neuman gewixe
+                    u_im1_j = u_i_j + cellInfo.faceLeft.neumannU.value() * dx;
+                    discretization_->f(i-1,j) = u_im1_j; // set f to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
+                } 
+                if (cellInfo.faceLeft.dirichletV.has_value()) {
+                    v_im1_j = 2.0 * cellInfo.faceLeft.dirichletV.value() - v_i_j;
+                }  else if (cellInfo.faceLeft.neumannV.has_value()) {
+                    v_im1_j = v_i_j + cellInfo.faceLeft.neumannV.value() * dx;
+                }
+            }
+            if (bottomBC) {
+                if (cellInfo.faceBottom.dirichletU.has_value()) {
+                    u_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletU.value() - u_i_j;
+                }  else if (cellInfo.faceBottom.neumannU.has_value()) {
+                    u_i_jm1 = u_i_j + cellInfo.faceBottom.neumannU.value() * dy;     
+                }
+                if (cellInfo.faceBottom.dirichletV.has_value()) {
+                    // do nothing
+                    continue;
+                } else if (cellInfo.faceBottom.neumannV.has_value()) {
+                    v_i_jm1 = v_i_j + cellInfo.faceBottom.neumannV.value() * dy;
+                    discretization_->g(i,j-1) = v_i_jm1; // set g to the neumann value
+                }
+            }
 
-            double A_ij = 1 / settings_.re * (computeD2uDx2(u_ip1_j, u_i_j, u_im1_j) + computeD2uDy2(u_i_jp1, u_i_j, u_i_jm1)) - computeDu2Dx(u_i_j, u_im1_j, u_ip1_j) - computeDuvDy(u_i_j, u_i_jp1, u_i_jm1, v_i_j, v_ip1_j, v_i_jm1, v_ip1_jm1) + settings_.g[0];
-            discretization_->f(i,j) = u_i_j + A_ij * dt_;
+            
+            if (calcA) {
+                double A_ij = 1 / settings_.re * (computeD2uDx2(u_ip1_j, u_i_j, u_im1_j) + computeD2uDy2(u_i_jp1, u_i_j, u_i_jm1)) - computeDu2Dx(u_i_j, u_im1_j, u_ip1_j) - computeDuvDy(u_i_j, u_i_jp1, u_i_jm1, v_i_j, v_ip1_j, v_i_jm1, v_ip1_jm1) + settings_.g[0];
+                discretization_->f(i,j) = u_i_j + A_ij * dt_;
+            }
 
-            double B_ij = 1 / settings_.re * (computeD2vDx2(v_ip1_j, v_i_j, v_im1_j) + computeD2vDy2(v_i_jp1, v_i_j, v_i_jm1)) - computeDuvDx(u_i_j, u_i_jp1, u_im1_j, u_im1_jp1, v_i_j, v_ip1_j, v_im1_j) - computeDv2Dy(v_i_j, v_i_jp1, v_i_jm1) + settings_.g[1];
-            discretization_->g(i,j) = v_i_j + B_ij * dt_;         
+            if (calcB) {
+                double B_ij = 1 / settings_.re * (computeD2vDx2(v_ip1_j, v_i_j, v_im1_j) + computeD2vDy2(v_i_jp1, v_i_j, v_i_jm1)) - computeDuvDx(u_i_j, u_i_jp1, u_im1_j, u_im1_jp1, v_i_j, v_ip1_j, v_im1_j) - computeDv2Dy(v_i_j, v_i_jp1, v_i_jm1) + settings_.g[1];
+                discretization_->g(i,j) = v_i_j + B_ij * dt_;   
+            }      
 
-        } else if (not inside of an obstacle so check ewith obstacke Mask) {
+        } else if (!domain_.obstacleCheck(i, j)) {
             // inner cell, normal stencil
             double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j)) - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
             discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
@@ -397,27 +460,28 @@ void DomainComputation::computePreliminaryVelocities() {
             discretization_->g(i,j) = discretization_->v(i,j) + B_ij * dt_;
         }
 
+    }    
+}
+
+void DomainComputation::computeRightHandSide() {
+    std::vector<CellInfo> allCellsInfo = domain_.getInfoListFluid();
+    int n = allCellsInfo.size();
+    double dx = discretization_->dx();
+    for (int idx = 0; idx < n; idx++) {
+        CellInfo cellInfo = allCellsInfo[idx];
+        int i = cellInfo.cellIndexPartition[0];
+        int j = cellInfo.cellIndexPartition[1];
+
+        double rhs_ij = (discretization_->f(i,j) - discretization_->f(i-1,j)) / discretization_->dx() + (discretization_->g(i,j) - discretization_->g(i,j-1)) / discretization_->dy();
+
+        discretization_->rhs(i,j) = rhs_ij / dt_;
     }
+}
 
+void DomainComputation::computePressure() {
+    pressureSolver_->solve();
+}
 
-
-
-
-    // calc F and G (leave out boundaries)
-    for (int i = discretization_->uIBegin(); i <= discretization_->uIEnd(); i++) {
-        for (int j = discretization_->uJBegin(); j <= discretization_->uJEnd(); j++) {
-            double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j))
-            - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
-            discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
-        }
-    }
-
-    for (int i = discretization_->vIBegin(); i <= discretization_->vIEnd(); i++) {
-        for (int j = discretization_->vJBegin(); j <= discretization_->vJEnd(); j++) {
-            double B_ij = 1 / settings_.re * ( discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j))
-            - discretization_->computeDuvDx(i,j) - discretization_->computeDv2Dy(i,j) + settings_.g[1];
-            discretization_->g(i,j) = discretization_->v(i,j) + B_ij * dt_;
-        }
-    }
-    
+void DomainComputation::computeVelocities() {
+    // update velocities based on new pressure field
 }
