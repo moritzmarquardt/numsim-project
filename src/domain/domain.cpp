@@ -16,9 +16,15 @@ void Domain::readDomainFile(const std::string& filename) {
         std::cerr << "Error: Could not open domain file: " << filename << std::endl;
         return;
     }
+
+    double physicalSizeX = settings_->physicalSize[0];
+    double physicalSizeY = settings_->physicalSize[1];
+    int nCellsX = settings_->nCells[0];
+    int nCellsY = settings_->nCells[1];
     
-    // Add your domain file parsing logic here
-    // Example: read grid information, obstacle definitions, etc.
+    // first go through the whole file once to save grid info in arrays2d and marker info in a lsit of maps
+    
+
     
     file.close();
 }
