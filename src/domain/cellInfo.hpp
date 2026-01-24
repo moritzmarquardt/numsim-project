@@ -53,4 +53,15 @@ struct CellInfo
     bool leftHasVBC() const {
         return faceLeft.dirichletV.has_value() || faceLeft.neumannV.has_value();
     }
+
+    // implement a toString method for pretty printing
+    std::string toString() const {
+        std::string result = "CellInfo(cellIndexPartition=[" + std::to_string(cellIndexPartition[0]) + ", " + std::to_string(cellIndexPartition[1]) +"], fluidCell=" + (fluidCell ? "true" : "false") + ", ";
+        result += "faceTop=" + faceTop.toString() + ", ";
+        result += "faceRight=" + faceRight.toString() + ", ";
+        result += "faceBottom=" + faceBottom.toString() + ", ";
+        result += "faceLeft=" + faceLeft.toString();
+        result += ")";
+        return result;
+    }
 };

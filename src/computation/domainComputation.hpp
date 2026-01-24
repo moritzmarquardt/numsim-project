@@ -7,6 +7,8 @@
 #include "output_writer/output_writer_text_parallel.hpp"
 #include "pressureSolver/parallelPressureSolver.hpp"
 #include "pressureSolver/RedBlackGaussSeidel.hpp"
+#include "pressureSolver/domainPressureSolver.hpp"
+#include "pressureSolver/domainRBGaussSeidel.hpp"
 #include "pressureSolver/RedBlackSOR.hpp"
 #include "pressureSolver/parallelCG.hpp"
 #include "domain/domain.hpp"
@@ -71,13 +73,8 @@ class DomainComputation : public Computation {
         double computeDuvDy(double u_i_j, double u_i_jp1, double u_i_jm1,
                             double v_i_j, double v_ip1_j, double v_i_jm1, double v_ip1_jm1) const;
 
-        /**
-         * Compute the time step width dt based on the CFL condition and diffusion limits in parallel
-         */
-        void computeTimeStepWidth() override;
-
         std::unique_ptr<OutputWriterParaviewParallel> outputWriterParaview_;
         std::unique_ptr<OutputWriterTextParallel> outputWriterText_;
         MPI_Comm cartComm_;
-        Domain domain_;
+        std::shared_ptr<Domain> domain_;
 };

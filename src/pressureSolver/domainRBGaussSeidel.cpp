@@ -1,7 +1,7 @@
 #include "pressureSolver/domainRBGaussSeidel.hpp"
 
-DomainRBGaussSeidel::DomainRBGaussSeidel(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning) :
-    DomainPressureSolver(discretization, epsilon, maximumNumberOfIterations, partitioning) {}
+DomainRBGaussSeidel::DomainRBGaussSeidel(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning, std::shared_ptr<Domain> domain) :
+    DomainPressureSolver(discretization, epsilon, maximumNumberOfIterations, partitioning, domain) {}
 
 void DomainRBGaussSeidel::solve() {
     const double dx2 = discretization_->dx() * discretization_->dx();
@@ -47,12 +47,10 @@ void DomainRBGaussSeidel::solve() {
         }
         
         // Communicate red cell values to neighbors
-        communicateAndSetBoundaryValues();
+        communicateGhostValues();
 
 
         std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
-        int n = blackCellsInfo.size();
-        double dx = discretization_->dx();
         for (int idx = 0; idx < n; idx++) {
             CellInfo blackCellInfo = blackCellsInfo[idx];
             int i = blackCellInfo.cellIndexPartition[0];
@@ -81,7 +79,7 @@ void DomainRBGaussSeidel::solve() {
         }
         
         // Communicate black cell values and set boundary values
-        communicateAndSetBoundaryValues();
+        communicateGhostValues();
         
         // Compute residual norm after full iteration
         computeResidualNorm();

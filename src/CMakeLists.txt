@@ -29,6 +29,12 @@ add_executable(${PROJECT_NAME}
     storage/array2d.cpp
     storage/FieldVariable.cpp
     partitioning/partitioning.cpp
+    domain/domain.cpp
+    domain/cellInfo.hpp
+    domain/boundaryInfo.hpp
+    computation/domainComputation.cpp
+    pressureSolver/domainPressureSolver.cpp
+    pressureSolver/domainRBGaussSeidel.cpp
 )
 
 # Add the project directory to include directories, to be able to include all project header files from anywhere

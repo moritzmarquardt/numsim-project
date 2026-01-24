@@ -13,8 +13,87 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     meshWidth_[0] = settings_.physicalSize[0] / settings_.nCells[0];
     meshWidth_[1] = settings_.physicalSize[1] / settings_.nCells[1];
 
-    domain_ = Domain(&settings_, partitioning_);
-    domain_.readDomainFile(argv[2]);
+    domain_ = std::make_shared<Domain>(&settings_, partitioning_);
+    domain_->readDomainFile(argv[2]);
+
+    // only print for rank 0
+    if (partitioning_->ownRankNo() == 0) {
+
+        // pretty print array2d of domain: the right and top faces array and the obstacle array
+        Array2D& obstacleMask = *(domain_->obstacleMaskGlobal_);
+        Array2D& rightFacesBC = *(domain_->rightFacesBCGlobal_);
+        Array2D& topFacesBC = *(domain_->topFacesBCGlobal_);
+        int nCellsX = settings_.nCells[0];
+        int nCellsY = settings_.nCells[1];
+        std::cout << "Obstacle Mask:" << std::endl;
+        for (int j = nCellsY - 1; j >= 0; --j) {
+            for (int i = 0; i < nCellsX; ++i) {
+                std::cout << (obstacleMask(i, j) > 0.5 ? '#' : '.') ;
+            }
+            std::cout << std::endl;
+        }
+        std::cout << "Right Faces BC:" << std::endl;
+        for (int j = nCellsY - 1; j >= 0; --j) {
+            for (int i = 0; i < nCellsX + 1; ++i) {
+                double code = rightFacesBC(i, j);
+                char marker = domain_->rightFaceMarkerMap().count(code) ? domain_->rightFaceMarkerMap().at(code) : '?';
+                std::cout << marker ;
+            }
+            std::cout << std::endl;
+        }
+        std::cout << "Top Faces BC:" << std::endl;
+        for (int j = nCellsY; j >= 0; --j) {
+            for (int i = 0; i < nCellsX; ++i) {
+                double code = topFacesBC(i, j);
+                char marker = domain_->topFaceMarkerMap().count(code) ? domain_->topFaceMarkerMap().at(code) : '?';
+                std::cout << marker ;
+            }
+            std::cout << std::endl;
+        }
+
+
+        // print the maps of the domain
+        std::cout << "Right Face BC Info Map:" << std::endl;
+        for (const auto& pair : domain_->rightFaceBCInfoMap()) {
+            std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
+        }
+        std::cout << "Top Face BC Info Map:" << std::endl;
+        for (const auto& pair : domain_->topFaceBCInfoMap()) {
+            std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
+        }   
+        // print char to code maps
+        std::cout << "Right Face Marker Map:" << std::endl;
+        for (const auto& pair : domain_->rightFaceMarkerMap()) {
+            std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
+        }
+        std::cout << "Top Face Marker Map:" << std::endl;
+        for (const auto& pair : domain_->topFaceMarkerMap()) {
+            std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
+        }
+
+        // print lists of cells
+        std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
+        std::cout << "All Cells Info List:" << std::endl;
+        for (const auto& cellInfo : allCellsInfo) {
+            std::cout << cellInfo.toString() << std::endl; 
+        }
+        std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+        std::cout << "Fluid Cells Info List:" << std::endl;
+        for (const auto& cellInfo : fluidCellsInfo) {
+            std::cout << cellInfo.toString() << std::endl;
+        }
+        std::vector<CellInfo> redCellsInfo = domain_->getRedListFluid();
+        std::cout << "Red Fluid Cells Info List:" << std::endl;
+        for (const auto& cellInfo : redCellsInfo) {
+            std::cout << cellInfo.toString() << std::endl;
+        }
+
+
+    }
+
+
+
+
     // create discretization
     if (settings_.useDonorCell) {
         discretization_ = std::make_shared<DonorCell>(nCellsLocal, meshWidth_, settings_.alpha, partitioning_);
@@ -25,7 +104,7 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     // create pressure solver
     // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
     if (settings_.pressureSolver == "GaussSeidel") {
-        pressureSolver_ = std::make_unique<RedBlackGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
+        pressureSolver_ = std::make_unique<DomainRBGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
     } else if (settings_.pressureSolver == "SOR") {
         // TODO: calculate optimal omega (not in settings hardcoded)
         pressureSolver_ = std::make_unique<RedBlackSOR>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, settings_.omega, partitioning_);
@@ -80,54 +159,26 @@ void DomainComputation::runSimulation() {
     }
 }
 
-void DomainComputation::computeTimeStepWidth() {
-    // compute time step width based on CFL condition
-    double dx = discretization_->dx();
-    double dy = discretization_->dy();
-
-    double dx2 = dx * dx;
-    double dy2 = dy * dy;  
-
-    double dt_diff_cond = 0.5 * settings_.re * (dx2 * dy2) / (dx2 + dy2);
-    double dt_conv_cond_local = std::min(dx / discretization_->u().computeMaxAbs(), dy / discretization_->v().computeMaxAbs());
-
-    MPI_Request time_request;
-    double dt_conv_cond_global = 0.0;
-    // perform global reduction to find minimum dt_conv_cond across all processes
-    MPI_Iallreduce(&dt_conv_cond_local, &dt_conv_cond_global, 1, MPI_DOUBLE, MPI_MIN, cartComm_, &time_request);
-    MPI_Wait(&time_request, MPI_STATUS_IGNORE);
-
-    double dt_prelim = settings_.tau * std::min(dt_diff_cond, dt_conv_cond_global);
-
-    if (dt_prelim < settings_.maximumDt) {
-        dt_ = dt_prelim;
-    } else {
-        dt_ = settings_.maximumDt;
-        std::cout << "Warning: Time step width limited by maximumDt!" << std::endl;
-    }
-}
-
 void DomainComputation::applyInitialBoundaryValues() {
     //it is sufficient to only go though all cells and only look at the right and top face since then we will go through all faces exactly once. the values set here are only when we have dirichlet BCs directly orthogonally flowing through the face direction. These are onyl set once in the beginning and then never touched again.
-    std::vector<CellInfo> allCellsInfo = domain_.getInfoListAll();
+    std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
     int n = allCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
         CellInfo cellInfo = allCellsInfo[idx];
         if (cellInfo.rightIsBoundaryFace() || cellInfo.topIsBoundaryFace()) {
             int i = cellInfo.cellIndexPartition[0];
             int j = cellInfo.cellIndexPartition[1];
-            double faceBCValue; // only stores the value of the faceBC that is orthogonal to face orientation.
             // top face
-            if (cellInfo.topIsBoundaryFace()) {
-                faceBCValue = cellInfo.faceTop.dirichletV.value();
+            if (cellInfo.topIsBoundaryFace() && cellInfo.faceTop.dirichletV.has_value()) {
+                double faceBCValue = cellInfo.faceTop.dirichletV.value();
                 if (faceBCValue != 0.0) {
                     discretization_->v(i, j) = faceBCValue;
                     discretization_->g(i, j) = faceBCValue;
                 }
             }
             // right face
-            if (cellInfo.rightIsBoundaryFace()) {
-                faceBCValue = cellInfo.faceRight.dirichletU.value();
+            if (cellInfo.rightIsBoundaryFace() && cellInfo.faceRight.dirichletU.has_value()) {
+                double faceBCValue = cellInfo.faceRight.dirichletU.value();
                 if (faceBCValue != 0.0) {
                     discretization_->u(i, j) = faceBCValue;
                     discretization_->f(i, j) = faceBCValue;
@@ -353,7 +404,7 @@ double DomainComputation::computeDuvDy(double u_i_j, double u_i_jp1, double u_i_
 
 
 void DomainComputation::computePreliminaryVelocities() {
-    std::vector<CellInfo> allCellsInfo = domain_.getInfoListFluid();
+    std::vector<CellInfo> allCellsInfo = domain_->getInfoListFluid();
     int n = allCellsInfo.size();
     double dx = discretization_->dx();
     for (int idx = 0; idx < n; idx++) {
@@ -465,7 +516,7 @@ void DomainComputation::computePreliminaryVelocities() {
 }
 
 void DomainComputation::computeRightHandSide() {
-    std::vector<CellInfo> allCellsInfo = domain_.getInfoListFluid();
+    std::vector<CellInfo> allCellsInfo = domain_->getInfoListFluid();
     int n = allCellsInfo.size();
     double dx = discretization_->dx();
     for (int idx = 0; idx < n; idx++) {
@@ -485,7 +536,7 @@ void DomainComputation::computePressure() {
 
 void DomainComputation::computeVelocities() {
     // update velocities based on new pressure field
-    std::vector<CellInfo> fluidCellsInfo = domain_.getInfoListFluid();
+    std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
     int n = fluidCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
         CellInfo cellInfo = fluidCellsInfo[idx];

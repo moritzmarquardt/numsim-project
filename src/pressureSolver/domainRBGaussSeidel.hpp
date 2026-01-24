@@ -5,7 +5,7 @@
 
 class DomainRBGaussSeidel : public DomainPressureSolver {
 public:
-    DomainRBGaussSeidel(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning);
+    DomainRBGaussSeidel(std::shared_ptr<Discretization> discretization, double epsilon, int maximumNumberOfIterations, std::shared_ptr<Partitioning> partitioning, std::shared_ptr<Domain> domain);
     
     /**
      * solve the system of the Poisson equation for pressure using Red-Black Gauss-Seidel method
