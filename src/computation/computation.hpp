@@ -54,22 +54,22 @@ protected:
     /**
      * Compute preliminary velocities F and G
      */
-    void computePreliminaryVelocities();
+    virtual void computePreliminaryVelocities();
 
     /**
      * Compute the right-hand side of the pressure Poisson equation
      */
-    void computeRightHandSide();
+    virtual void computeRightHandSide();
 
     /**
      * Compute the pressure field by solving the Poisson equation
      */
-    void computePressure();
+    virtual void computePressure();
 
     /**
      * Compute the final velocities u and v
      */
-    void computeVelocities();
+    virtual void computeVelocities();
 
     Settings settings_;
     int simNumber_;
