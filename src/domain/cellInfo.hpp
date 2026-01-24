@@ -10,46 +10,47 @@ struct CellInfo
     BoundaryInfo faceBottom;
     BoundaryInfo faceLeft;
     std::array<int, 2> cellIndexPartition;  //not the global one
+    bool fluidCell = true; // true if fluid cell, false if obstacle cell
 
     bool hasAnyBoundaryFace() const {
         return topIsBoundaryFace() || rightIsBoundaryFace() || bottomIsBoundaryFace() || leftIsBoundaryFaceC();
     }
 
     bool topIsBoundaryFace() const {
-        return topHasXBC() || topHasYBC();
+        return topHasUBC() || topHasVBC();
     }
     bool rightIsBoundaryFace() const {
-        return rightHasXBC() || rightHasYBC();
+        return rightHasUBC() || rightHasVBC();
     }
     bool bottomIsBoundaryFace() const {
-        return bottomHasXBC() || bottomHasYBC();
+        return bottomHasUBC() || bottomHasVBC();
     }
     bool leftIsBoundaryFaceC() const {
-        return leftHasXBC() || leftHasYBC();
+        return leftHasUBC() || leftHasVBC();
     }
 
-    bool topHasXBC() const {
-        return faceTop.dirichletX.has_value() || faceTop.neumannX.has_value();
+    bool topHasUBC() const {
+        return faceTop.dirichletU.has_value() || faceTop.neumannU.has_value();
     }
-    bool topHasYBC() const {
-        return faceTop.dirichletY.has_value() || faceTop.neumannY.has_value();
+    bool topHasVBC() const {
+        return faceTop.dirichletV.has_value() || faceTop.neumannV.has_value();
     }
-    bool rightHasXBC() const {
-        return faceRight.dirichletX.has_value() || faceRight.neumannX.has_value();
+    bool rightHasUBC() const {
+        return faceRight.dirichletU.has_value() || faceRight.neumannU.has_value();
     }
-    bool rightHasYBC() const {
-        return faceRight.dirichletY.has_value() || faceRight.neumannY.has_value();
+    bool rightHasVBC() const {
+        return faceRight.dirichletV.has_value() || faceRight.neumannV.has_value();
     }
-    bool bottomHasXBC() const {
-        return faceBottom.dirichletX.has_value() || faceBottom.neumannX.has_value();
+    bool bottomHasUBC() const {
+        return faceBottom.dirichletU.has_value() || faceBottom.neumannU.has_value();
     }
-    bool bottomHasYBC() const {
-        return faceBottom.dirichletY.has_value() || faceBottom.neumannY.has_value();
+    bool bottomHasVBC() const {
+        return faceBottom.dirichletV.has_value() || faceBottom.neumannV.has_value();
     }
-    bool leftHasXBC() const {
-        return faceLeft.dirichletX.has_value() || faceLeft.neumannX.has_value();
+    bool leftHasUBC() const {
+        return faceLeft.dirichletU.has_value() || faceLeft.neumannU.has_value();
     }
-    bool leftHasYBC() const {
-        return faceLeft.dirichletY.has_value() || faceLeft.neumannY.has_value();
+    bool leftHasVBC() const {
+        return faceLeft.dirichletV.has_value() || faceLeft.neumannV.has_value();
     }
 };

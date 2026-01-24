@@ -15,36 +15,35 @@ class Domain {
     public:
         Domain(const Settings* settings, std::shared_ptr<Partitioning> partitioning);
 
+        /**
+         * Read domain file and set up the domain including all the lists of cells
+         */
         void readDomainFile(const std::string& filename);
 
-        /**
-         * Check if cell of index (i,j) is an obstacle
-         */
-        std::unique_ptr<Array2D> obstacleCheck(int i, int j);
-
         // getter for boundaryInfoListAll_
-        std::vector<CellInfo> getInfoListAll() {
-            return *boundaryInfoListAll_;
+        std::vector<CellInfo> getInfoListAll() const {
+            return *cellListAll_;
         }
 
         /**
          * Get all cells with info that are fluid cells (no obstacle cells)
          */
-        std::vector<CellInfo> getInfoListFluid() const;
-
-        std::vector<CellInfo> getRedListFluid() const;
-        std::vector<CellInfo> getBlackListFluid() const;
+        std::vector<CellInfo> getInfoListFluid() const {
+            return *cellListFluid_;
+        }
+        std::vector<CellInfo> getRedListFluid() const {
+            return *redListFluid_;
+        }
+        std::vector<CellInfo> getBlackListFluid() const {
+            return *blackListFluid_;
+        }
 
     private:
         const Settings* settings_;
         std::shared_ptr<Partitioning> partitioning_;
-        std::unique_ptr<Array2D> fluidMask_; 
-        std::unique_ptr<Array2D> obstacleMask_;
-        std::unique_ptr<std::vector<CellInfo>> boundaryInfoListAll_; //holds all cells with their respective boundary condition info. All cells means including the additional "ghost" row and column left and below the partition which store the info for the outer face of the partition.
-        // std::unique_ptr<std::vector<std::pair<int, int>>> uIndexes_; // list of (i,j) indexes where u has to be calculated (equivalent to ui begin und end und uj begin und end functions in StaggeredGrid) so basically fluid cells that are inner cells.
-        std::unique_ptr<std::vector<BoundaryInfo>> uList; // list of boundary infos for all boundaries in the domain
-        // std::unique_ptr<std::vector<std::pair<int, int>>> vIndexes_; // list of (i,j) indexes where v has to be calculated
-        std::unique_ptr<std::vector<BoundaryInfo>> vList; // list of boundary infos for all boundaries in the domain
-        // std::unique_ptr<std::vector<std::pair<int, int>>> pIndexes_; // list of (i,j) indexes where p has to be calculated (this is equivalent to the list of fluid cells since p is in the middle of the cell and never is on the same spot as a boundary conditions bc they are only defined on faces /edges)
-        std::unique_ptr<std::vector<BoundaryInfo>> pList; // list of boundary infos for all boundaries in the domain
+        std::unique_ptr<Array2D> obstacleMask_; // has size of local partition
+        std::unique_ptr<std::vector<CellInfo>> cellListAll_; // list of all cells in the local partition with their cell info
+        std::unique_ptr<std::vector<CellInfo>> cellListFluid_; // list of all fluid cells in the local partition with their cell info
+        std::unique_ptr<std::vector<CellInfo>> redListFluid_; // list of all red fluid cells in the local partition with their cell info
+        std::unique_ptr<std::vector<CellInfo>> blackListFluid_; // list of all black fluid cells in the local partition with their cell info
 };

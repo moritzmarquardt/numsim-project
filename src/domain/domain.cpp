@@ -22,3 +22,5 @@ void Domain::readDomainFile(const std::string& filename) {
     
     file.close();
 }
+
+
