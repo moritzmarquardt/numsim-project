@@ -34,7 +34,7 @@ void DomainPressureSolver::computeResidualNorm() {
         if (cellInfo.bottomIsBoundaryFace()) {
             p_i_jm1 = p_i_j;
         }
-        if (cellInfo.leftIsBoundaryFaceC()) {
+        if (cellInfo.leftIsBoundaryFace()) {
             p_im1_j = p_i_j;
         }
         if (cellInfo.rightIsBoundaryFace()) {

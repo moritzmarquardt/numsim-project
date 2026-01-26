@@ -152,37 +152,46 @@ void DomainComputation::runSimulation() {
         iterationCount++;
 
         // this was the fix!!!
-        if (currentTime >= nOutputs) {
-            outputWriterParaview_->writeFile(currentTime);
-            nOutputs = nOutputs + 1;
-        }       
+        // if (currentTime >= nOutputs) {
+        //     outputWriterParaview_->writeFile(currentTime);
+        //     nOutputs = nOutputs + 1;
+        // }
+        outputWriterParaview_->writeFile(currentTime);
     }
 }
 
 void DomainComputation::applyInitialBoundaryValues() {
     //it is sufficient to only go though all cells and only look at the right and top face since then we will go through all faces exactly once. the values set here are only when we have dirichlet BCs directly orthogonally flowing through the face direction. These are onyl set once in the beginning and then never touched again.
-    std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
-    int n = allCellsInfo.size();
+    std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+    int n = fluidCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
-        CellInfo cellInfo = allCellsInfo[idx];
-        if (cellInfo.rightIsBoundaryFace() || cellInfo.topIsBoundaryFace()) {
+        CellInfo cellInfo = fluidCellsInfo[idx];
+        if (cellInfo.rightIsBoundaryFace() || cellInfo.topIsBoundaryFace() || cellInfo.leftIsBoundaryFace() || cellInfo.bottomIsBoundaryFace()) {
             int i = cellInfo.cellIndexPartition[0];
             int j = cellInfo.cellIndexPartition[1];
             // top face
             if (cellInfo.topIsBoundaryFace() && cellInfo.faceTop.dirichletV.has_value()) {
                 double faceBCValue = cellInfo.faceTop.dirichletV.value();
-                if (faceBCValue != 0.0) {
-                    discretization_->v(i, j) = faceBCValue;
-                    discretization_->g(i, j) = faceBCValue;
-                }
+                discretization_->v(i, j) = faceBCValue;
+                discretization_->g(i, j) = faceBCValue;
+            }
+            // bottom face
+            if (cellInfo.bottomIsBoundaryFace() && cellInfo.faceBottom.dirichletV.has_value()) {
+                double faceBCValue = cellInfo.faceBottom.dirichletV.value();
+                discretization_->v(i, j - 1) = faceBCValue;
+                discretization_->g(i, j - 1) = faceBCValue;
             }
             // right face
             if (cellInfo.rightIsBoundaryFace() && cellInfo.faceRight.dirichletU.has_value()) {
                 double faceBCValue = cellInfo.faceRight.dirichletU.value();
-                if (faceBCValue != 0.0) {
-                    discretization_->u(i, j) = faceBCValue;
-                    discretization_->f(i, j) = faceBCValue;
-                }
+                discretization_->u(i, j) = faceBCValue;
+                discretization_->f(i, j) = faceBCValue;
+            }
+            // left face
+            if (cellInfo.leftIsBoundaryFace() && cellInfo.faceLeft.dirichletU.has_value()) {
+                double faceBCValue = cellInfo.faceLeft.dirichletU.value();
+                discretization_->u(i - 1, j) = faceBCValue;
+                discretization_->f(i - 1, j) = faceBCValue;
             }
         }
     }
@@ -359,6 +368,7 @@ double DomainComputation::computeDu2Dx(double u_i_j, double u_im1_j, double u_ip
     return central_diff_term + settings_.alpha * donor_cell_term;
 }
 
+
 double DomainComputation::computeDv2Dy(double v_i_j, double v_i_jp1, double v_i_jm1) const {
     const double v_top_sum = (v_i_j + v_i_jp1) / 2.0;
     const double v_bottom_sum = (v_i_jm1 + v_i_j) / 2.0;
@@ -416,7 +426,7 @@ void DomainComputation::computePreliminaryVelocities() {
             bool topBC = cellInfo.topIsBoundaryFace();
             bool rightBC = cellInfo.rightIsBoundaryFace();
             bool bottomBC = cellInfo.bottomIsBoundaryFace();
-            bool leftBC = cellInfo.leftIsBoundaryFaceC();
+            bool leftBC = cellInfo.leftIsBoundaryFace();
 
             double u_i_j = discretization_->u(i,j);
             double u_ip1_j = discretization_->u(i+1,j);
@@ -560,6 +570,24 @@ void DomainComputation::computeVelocities() {
         } else if (cellInfo.faceTop.neumannV.has_value()) {
             // top boundary face
             discretization_->v(i,j) = discretization_->g(i,j);
+        }
+
+        if (partitioning_->ownPartitionContainsLeftBoundary()) {
+            if (!cellInfo.leftIsBoundaryFace() && i-1 == discretization_->uIBegin()) {
+                discretization_->u(i-1,j) = discretization_->f(i-1,j) - dt_ * computeDpDx(p_i_j, discretization_->p(i-1,j));
+            } else if (cellInfo.faceLeft.neumannU.has_value()) {
+                // left boundary face
+                discretization_->u(i-1,j) = discretization_->f(i-1,j);
+            }
+        }
+
+        if (partitioning_->ownPartitionContainsBottomBoundary()) {
+            if (!cellInfo.bottomIsBoundaryFace() && j-1 == discretization_->vJBegin()) {
+                discretization_->v(i,j-1) = discretization_->g(i,j-1) - dt_ * computeDpDy(p_i_j, discretization_->p(i,j-1));
+            } else if (cellInfo.faceBottom.neumannV.has_value()) {
+                // bottom boundary face
+                discretization_->v(i,j-1) = discretization_->g(i,j-1);
+            }
         }
 
     }

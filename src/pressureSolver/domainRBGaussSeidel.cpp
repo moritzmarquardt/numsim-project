@@ -36,7 +36,7 @@ void DomainRBGaussSeidel::solve() {
             if (redCellInfo.bottomIsBoundaryFace()) {
                 p_i_jm1 = p_i_j;
             }
-            if (redCellInfo.leftIsBoundaryFaceC()) {
+            if (redCellInfo.leftIsBoundaryFace()) {
                 p_im1_j = p_i_j;
             }
             if (redCellInfo.rightIsBoundaryFace()) {
@@ -68,7 +68,7 @@ void DomainRBGaussSeidel::solve() {
             if (blackCellInfo.bottomIsBoundaryFace()) {
                 p_i_jm1 = p_i_j;
             }
-            if (blackCellInfo.leftIsBoundaryFaceC()) {
+            if (blackCellInfo.leftIsBoundaryFace()) {
                 p_im1_j = p_i_j;
             }
             if (blackCellInfo.rightIsBoundaryFace()) {

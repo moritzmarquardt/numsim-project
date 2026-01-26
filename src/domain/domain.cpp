@@ -224,6 +224,110 @@ void Domain::readDomainFile(const std::string& filename) {
 
     file.close();
 
+    // Create no-slip boundary condition codes if they don't exist yet
+    double noSlipRightCode = -1.0;
+    double noSlipTopCode = -1.0;
+    
+    // Check if a no-slip BC already exists in the maps
+    for (const auto& [code, info] : rightFaceBCInfo_) {
+        if (info.dirichletU.has_value() && info.dirichletU.value() == 0.0 &&
+            info.dirichletV.has_value() && info.dirichletV.value() == 0.0 &&
+            !info.neumannU.has_value() && !info.neumannV.has_value()) {
+            noSlipRightCode = code;
+            break;
+        }
+    }
+    
+    // If no no-slip code exists for right faces, create one
+    if (noSlipRightCode < 0.0) {
+        noSlipRightCode = nextRightCode++;
+        BoundaryInfo noSlipInfo;
+        noSlipInfo.dirichletU = 0.0;
+        noSlipInfo.dirichletV = 0.0;
+        rightFaceBCInfo_[noSlipRightCode] = noSlipInfo;
+        rightFaceCodeToMarker_[noSlipRightCode] = 'O'; // 'O' for obstacle
+    }
+    
+    // Same for top faces
+    for (const auto& [code, info] : topFaceBCInfo_) {
+        if (info.dirichletU.has_value() && info.dirichletU.value() == 0.0 &&
+            info.dirichletV.has_value() && info.dirichletV.value() == 0.0 &&
+            !info.neumannU.has_value() && !info.neumannV.has_value()) {
+            noSlipTopCode = code;
+            break;
+        }
+    }
+    
+    if (noSlipTopCode < 0.0) {
+        noSlipTopCode = nextTopCode++;
+        BoundaryInfo noSlipInfo;
+        noSlipInfo.dirichletU = 0.0;
+        noSlipInfo.dirichletV = 0.0;
+        topFaceBCInfo_[noSlipTopCode] = noSlipInfo;
+        topFaceCodeToMarker_[noSlipTopCode] = 'O'; // 'O' for obstacle
+    }
+
+    // Apply default no-slip boundary conditions for obstacle faces that have no defined BC
+    for (int j = 0; j < nCellsY; ++j) {
+        for (int i = 0; i < nCellsX; ++i) {
+            bool isFluid = ((*obstacleMaskGlobal_)(i, j) < 0.5);
+            
+            if (isFluid) {
+                // Check right face (at i+1, j)
+                if (i + 1 < nCellsX) {
+                    bool rightIsObstacle = ((*obstacleMaskGlobal_)(i + 1, j) > 0.5);
+                    if (rightIsObstacle) {
+                        double faceCode = (*rightFacesBCGlobal_)(i + 1, j);
+                        const BoundaryInfo& faceInfo = rightFaceBCInfo_[faceCode];
+                        // Only set no-slip if no boundary conditions are defined
+                        if (!faceInfo.dirichletU.has_value() && !faceInfo.neumannU.has_value() &&
+                            !faceInfo.dirichletV.has_value() && !faceInfo.neumannV.has_value()) {
+                            (*rightFacesBCGlobal_)(i + 1, j) = noSlipRightCode;
+                        }
+                    }
+                }
+                
+                // Check left face (at i, j)
+                if (i - 1 >= 0) {
+                    bool leftIsObstacle = ((*obstacleMaskGlobal_)(i - 1, j) > 0.5);
+                    if (leftIsObstacle) {
+                        double faceCode = (*rightFacesBCGlobal_)(i, j);
+                        const BoundaryInfo& faceInfo = rightFaceBCInfo_[faceCode];
+                        if (!faceInfo.dirichletU.has_value() && !faceInfo.neumannU.has_value() &&
+                            !faceInfo.dirichletV.has_value() && !faceInfo.neumannV.has_value()) {
+                            (*rightFacesBCGlobal_)(i, j) = noSlipRightCode;
+                        }
+                    }
+                }
+                
+                // Check top face (at i, j+1)
+                if (j + 1 < nCellsY) {
+                    bool topIsObstacle = ((*obstacleMaskGlobal_)(i, j + 1) > 0.5);
+                    if (topIsObstacle) {
+                        double faceCode = (*topFacesBCGlobal_)(i, j + 1);
+                        const BoundaryInfo& faceInfo = topFaceBCInfo_[faceCode];
+                        if (!faceInfo.dirichletU.has_value() && !faceInfo.neumannU.has_value() &&
+                            !faceInfo.dirichletV.has_value() && !faceInfo.neumannV.has_value()) {
+                            (*topFacesBCGlobal_)(i, j + 1) = noSlipTopCode;
+                        }
+                    }
+                }
+                
+                // Check bottom face (at i, j)
+                if (j - 1 >= 0) {
+                    bool bottomIsObstacle = ((*obstacleMaskGlobal_)(i, j - 1) > 0.5);
+                    if (bottomIsObstacle) {
+                        double faceCode = (*topFacesBCGlobal_)(i, j);
+                        const BoundaryInfo& faceInfo = topFaceBCInfo_[faceCode];
+                        if (!faceInfo.dirichletU.has_value() && !faceInfo.neumannU.has_value() &&
+                            !faceInfo.dirichletV.has_value() && !faceInfo.neumannV.has_value()) {
+                            (*topFacesBCGlobal_)(i, j) = noSlipTopCode;
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // make local cell lists
     int nCellsXLocal = partitioning_->nCellsLocal()[0];
@@ -237,7 +341,7 @@ void Domain::readDomainFile(const std::string& filename) {
             int iGlobal = iLocal + xOffset;
             CellInfo cellInfo;
             // cellInfo.cellIndexGlobal = {iGlobal, jGlobal};
-            cellInfo.cellIndexPartition = {iLocal, jLocal};
+            cellInfo.cellIndexPartition = {iLocal + 2, jLocal + 2};
             cellInfo.fluidCell = ((*obstacleMaskGlobal_)(iGlobal, jGlobal) == 0.0);
             cellInfo.faceRight = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal+1, jGlobal));
             cellInfo.faceTop = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal+1));

@@ -13,7 +13,7 @@ struct CellInfo
     bool fluidCell = true; // true if fluid cell, false if obstacle cell
 
     bool hasAnyBoundaryFace() const {
-        return topIsBoundaryFace() || rightIsBoundaryFace() || bottomIsBoundaryFace() || leftIsBoundaryFaceC();
+        return topIsBoundaryFace() || rightIsBoundaryFace() || bottomIsBoundaryFace() || leftIsBoundaryFace();
     }
 
     bool topIsBoundaryFace() const {
@@ -25,7 +25,7 @@ struct CellInfo
     bool bottomIsBoundaryFace() const {
         return bottomHasUBC() || bottomHasVBC();
     }
-    bool leftIsBoundaryFaceC() const {
+    bool leftIsBoundaryFace() const {
         return leftHasUBC() || leftHasVBC();
     }
 
