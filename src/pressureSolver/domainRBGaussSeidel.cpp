@@ -195,10 +195,6 @@ void DomainRBGaussSeidel::solve() {
         }
 
         // set boundary values before communicating black cells
-        const int pIBegin = discretization_->pIBegin();
-        const int pIEnd = discretization_->pIEnd();
-        const int pJBegin = discretization_->pJBegin();
-        const int pJEnd = discretization_->pJEnd();
         if (partitioning_->ownPartitionContainsTopBoundary()) {
             for (int i = pIBegin; i <= pIEnd; i++) {
                 discretization_->p(i, pJEnd + 1) = discretization_->p(i, pJEnd);
