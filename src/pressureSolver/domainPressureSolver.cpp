@@ -70,8 +70,14 @@ void DomainPressureSolver::communicateGhostValues() {
     std::vector<double> sendBufferLeft(pJEnd - pJBegin + 1, 0.0);
     std::vector<double> sendBufferRight(pJEnd - pJBegin + 1, 0.0);
 
+    std::vector<double> recvBufferTop(pIEnd - pIBegin + 1, 0.0);
+    std::vector<double> recvBufferBottom(pIEnd - pIBegin + 1, 0.0);
+    std::vector<double> recvBufferLeft(pJEnd - pJBegin + 1, 0.0);
+    std::vector<double> recvBufferRight(pJEnd - pJBegin + 1, 0.0);
+
     // init MPI request variables
     MPI_Request requestTop, requestBottom, requestLeft, requestRight;
+    MPI_Request recvRequestTop, recvRequestBottom, recvRequestLeft, recvRequestRight;
 
     // Fill easy boundary conditions that do not need communication
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
@@ -80,7 +86,7 @@ void DomainPressureSolver::communicateGhostValues() {
         }
         // instantiate non-blocking sends and receives
         MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop);
-        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop); 
+        MPI_Irecv(recvBufferTop.data(), recvBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &recvRequestTop); 
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
@@ -89,7 +95,7 @@ void DomainPressureSolver::communicateGhostValues() {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
         }
         MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
-        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
+        MPI_Irecv(recvBufferBottom.data(), recvBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &recvRequestBottom);
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -97,7 +103,7 @@ void DomainPressureSolver::communicateGhostValues() {
             sendBufferLeft[j - pJBegin] = discretization_->p(pIBegin, j);
         }
         MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
-        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
+        MPI_Irecv(recvBufferLeft.data(), recvBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &recvRequestLeft);
     }
 
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
@@ -105,40 +111,40 @@ void DomainPressureSolver::communicateGhostValues() {
             sendBufferRight[j - pJBegin] = discretization_->p(pIEnd, j);
         }
         MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
-        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
+        MPI_Irecv(recvBufferRight.data(), recvBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &recvRequestRight);
     }
 
     // nachdem kommuniziert wurde setzren wir die ghost nodes mit den empfangenen werten für ränder die nicht am globalen rand liegen
     
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
-        MPI_Wait(&requestTop, MPI_STATUS_IGNORE);  // Wait for receive
+        MPI_Wait(&recvRequestTop, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            discretization_->p(i, pJEnd + 1) = sendBufferTop[i - pIBegin];
+            discretization_->p(i, pJEnd + 1) = recvBufferTop[i - pIBegin];
         }
     }
 
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
-        MPI_Wait(&requestBottom, MPI_STATUS_IGNORE);  // Wait for receive
+        MPI_Wait(&recvRequestBottom, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            discretization_->p(i, pJBegin - 1) = sendBufferBottom[i - pIBegin];
+            discretization_->p(i, pJBegin - 1) = recvBufferBottom[i - pIBegin];
         }
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
-        MPI_Wait(&requestLeft, MPI_STATUS_IGNORE);  // Wait for receive
+        MPI_Wait(&recvRequestLeft, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            discretization_->p(pIBegin - 1, j) = sendBufferLeft[j - pJBegin];
+            discretization_->p(pIBegin - 1, j) = recvBufferLeft[j - pJBegin];
         }
     }
 
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
-        MPI_Wait(&requestRight, MPI_STATUS_IGNORE);  // Wait for receive
+        MPI_Wait(&recvRequestRight, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            discretization_->p(pIEnd + 1, j) = sendBufferRight[j - pJBegin];
+            discretization_->p(pIEnd + 1, j) = recvBufferRight[j - pJBegin];
         }
     }
 }
