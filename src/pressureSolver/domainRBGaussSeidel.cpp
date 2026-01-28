@@ -61,9 +61,28 @@ void DomainRBGaussSeidel::solve() {
 
             discretization_->p(i,j) = lek * ((p_ip1_j + p_im1_j)/dx2 + (p_i_jp1 + p_i_jm1) / dy2 - discretization_->rhs(i,j));
         }
+
+        if (iter == 1 && partitioning_->ownRankNo() == 3) {
+            std::cout << "After red update in iteration " << iter << ", p field:" << std::endl;
+            for (int j = discretization_->pJEnd(); j <= discretization_->pJBegin(); j--) {
+                for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
+                    std::cout << discretization_->p(i, j) << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
         
         // Communicate red cell values to neighbors
         communicateGhostValues();
+        if (iter == 1 && partitioning_->ownRankNo() == 3) {
+            std::cout << "After communicating red cells in iteration " << iter << ", p field:" << std::endl;
+            for (int j = discretization_->pJEnd(); j <= discretization_->pJBegin(); j--) {
+                for (int i = discretization_->pIBegin(); i <= discretization_->pIEnd(); i++) {
+                    std::cout << discretization_->p(i, j) << " ";
+                }
+                std::cout << std::endl;
+            }
+        }
 
 
         std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
