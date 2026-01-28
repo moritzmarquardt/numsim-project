@@ -87,14 +87,22 @@ double StaggeredGrid::dy() const {
  * 
  */
 int StaggeredGrid::uIBegin() const {
-    return 1;
+    if (containsLeftBoundary_) {
+        return 2;
+    } else {
+        return 1;
+    }
 }
 
 /**
  * 
  */
 int StaggeredGrid::uIEnd() const {
-    return nCells_[0] + 1;
+    if (containsRightBoundary_){
+        return nCells_[0];
+    } else {
+        return nCells_[0] + 1;
+    }
 }
 
 int StaggeredGrid::uJBegin() const {
@@ -114,11 +122,19 @@ int StaggeredGrid::vIEnd() const {
 }
 
 int StaggeredGrid::vJBegin() const { 
-    return 1;
+    if (containsBottomBoundary_) {
+        return 2;
+    } else {
+        return 1;
+    }
 }
 
 int StaggeredGrid::vJEnd() const {
-    return nCells_[1] + 1;
+    if (containsTopBoundary_) {
+        return nCells_[1];
+    } else {
+        return nCells_[1] + 1;
+    }
 }
 
 int StaggeredGrid::pIBegin() const {

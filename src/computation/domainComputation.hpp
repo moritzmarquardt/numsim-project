@@ -25,6 +25,8 @@ class DomainComputation : public Computation {
          */
         void runSimulation() override;
 
+        void printProgress(double &currentTime, int &iterationCount);
+
         /**
          * Get the own MPI rank number
          */

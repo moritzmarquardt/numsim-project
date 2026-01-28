@@ -8,6 +8,7 @@ struct BoundaryInfo {
     std::optional<double> neumannU = std::nullopt; // derivatives of u in normal direction to the boundary face (always outward normal)
     std::optional<double> neumannV = std::nullopt; // derivatives of v in normal direction to the boundary face
     // only neumar or dirichlet conditions can be set for u and v on each face
+    bool isPartitionInnerFace = false; // true if this face is a partition boundary face inside the domain. false if it is a physical boundary face or inside the partition
 
     // implement a toString method for pretty printing
     std::string toString() const {

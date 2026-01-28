@@ -16,6 +16,14 @@ struct CellInfo
         return topIsBoundaryFace() || rightIsBoundaryFace() || bottomIsBoundaryFace() || leftIsBoundaryFace();
     }
 
+    /**
+     * for this cell u and f have to be computed
+     * do not calc u if there is a dirichlet condition on the right face
+     */
+    bool calcUF() const {
+        return faceRight.dirichletU.has_value() == false;
+    }
+
     bool topIsBoundaryFace() const {
         return topHasUBC() || topHasVBC();
     }

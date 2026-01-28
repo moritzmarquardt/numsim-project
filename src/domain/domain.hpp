@@ -23,6 +23,8 @@ class Domain {
          */
         void readDomainFile(const std::string& filename);
 
+        CellInfo createCellInfo(int iGlobal, int jGlobal, int iLocal, int jLocal, int nCellsXLocal, int nCellsYLocal);
+
         // getter for boundaryInfoListAll_
         std::vector<CellInfo> getInfoListAll() const {
             return *cellListAllLocal_;
@@ -39,6 +41,10 @@ class Domain {
         }
         std::vector<CellInfo> getBlackListFluid() const {
             return *blackListFluidLocal_;
+        }
+
+        std::vector<CellInfo> getGhostList() const {
+            return *ghostListLocal_;
         }
 
         const std::unordered_map<double, BoundaryInfo>& rightFaceBCInfoMap() const {
@@ -67,6 +73,7 @@ class Domain {
         std::unique_ptr<std::vector<CellInfo>> cellListFluidLocal_; // list of all fluid cells in the local partition with their cell info
         std::unique_ptr<std::vector<CellInfo>> redListFluidLocal_; // list of all red fluid cells in the local partition with their cell info
         std::unique_ptr<std::vector<CellInfo>> blackListFluidLocal_; // list of all black fluid cells in the local partition with their cell info
+        std::unique_ptr<std::vector<CellInfo>> ghostListLocal_; // list with the cells left and bottom ghost cells in the local partition with their cell info
 
         std::unordered_map<double, BoundaryInfo> rightFaceBCInfo_;
         std::unordered_map<double, BoundaryInfo> topFaceBCInfo_;

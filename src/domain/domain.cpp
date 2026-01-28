@@ -32,6 +32,7 @@ void Domain::readDomainFile(const std::string& filename) {
     cellListFluidLocal_ = std::make_unique<std::vector<CellInfo>>();
     redListFluidLocal_ = std::make_unique<std::vector<CellInfo>>();
     blackListFluidLocal_ = std::make_unique<std::vector<CellInfo>>();
+    ghostListLocal_ = std::make_unique<std::vector<CellInfo>>();
 
     rightFaceBCInfo_.clear();
     topFaceBCInfo_.clear();
@@ -339,15 +340,8 @@ void Domain::readDomainFile(const std::string& filename) {
         int jGlobal = jLocal + yOffset;
         for (int iLocal = 0; iLocal < nCellsXLocal; ++iLocal) {
             int iGlobal = iLocal + xOffset;
-            CellInfo cellInfo;
-            // cellInfo.cellIndexGlobal = {iGlobal, jGlobal};
-            cellInfo.cellIndexPartition = {iLocal + 2, jLocal + 2};
-            cellInfo.fluidCell = ((*obstacleMaskGlobal_)(iGlobal, jGlobal) == 0.0);
-            cellInfo.faceRight = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal+1, jGlobal));
-            cellInfo.faceTop = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal+1));
-            cellInfo.faceBottom = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal));
-            cellInfo.faceLeft = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal, jGlobal));
 
+            CellInfo cellInfo = createCellInfo(iGlobal, jGlobal, iLocal, jLocal, nCellsXLocal, nCellsYLocal);
             cellListAllLocal_->push_back(cellInfo);
 
 
@@ -361,6 +355,54 @@ void Domain::readDomainFile(const std::string& filename) {
             }
         }
     }
+
+    // Fill ghostListLocal_ with cells adjacent to left and bottom partition boundaries
+    // (only if those boundaries are NOT domain boundaries)
+    
+    // Add cells adjacent to left partition boundary (if left is not domain boundary)
+    if (!partitioning_->ownPartitionContainsLeftBoundary()) {
+        for (int jLocal = 0; jLocal < nCellsYLocal; ++jLocal) {
+            int jGlobal = jLocal + yOffset;
+            int iLocal = - 1;  // leftmost column in partition
+            int iGlobal = iLocal + xOffset;
+            std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
+            
+            CellInfo cellInfo = createCellInfo(iGlobal, jGlobal, iLocal, jLocal, nCellsXLocal, nCellsYLocal);
+            std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
+            ghostListLocal_->push_back(cellInfo);
+        }
+    }
+    
+    // Add cells adjacent to bottom partition boundary (if bottom is not domain boundary)
+    if (!partitioning_->ownPartitionContainsBottomBoundary()) {
+        for (int iLocal = 0; iLocal < nCellsXLocal; ++iLocal) {
+            int iGlobal = iLocal + xOffset;
+            int jLocal = - 1;  // bottommost row in partition
+            int jGlobal = jLocal + yOffset;
+            std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
+            
+            CellInfo cellInfo = createCellInfo(iGlobal, jGlobal, iLocal, jLocal, nCellsXLocal, nCellsYLocal);
+            std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
+            
+            ghostListLocal_->push_back(cellInfo);
+        }
+    }
 }
 
 
+// helper function to fill cellinfo
+CellInfo Domain::createCellInfo(int iGlobal, int jGlobal, int iLocal, int jLocal, int nCellsXLocal, int nCellsYLocal) {
+    CellInfo cellInfo;
+    // cellInfo.cellIndexGlobal = {iGlobal, jGlobal};
+    cellInfo.cellIndexPartition = {iLocal + 2, jLocal + 2};
+    cellInfo.fluidCell = ((*obstacleMaskGlobal_)(iGlobal, jGlobal) == 0.0);
+    cellInfo.faceRight = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal+1, jGlobal));
+    cellInfo.faceTop = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal+1));
+    cellInfo.faceBottom = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal));
+    cellInfo.faceLeft = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal, jGlobal));
+    cellInfo.faceRight.isPartitionInnerFace = partitioning_->ownPartitionContainsRightBoundary() == false && (iLocal == nCellsXLocal - 1);
+    cellInfo.faceTop.isPartitionInnerFace = partitioning_->ownPartitionContainsTopBoundary() == false && (jLocal == nCellsYLocal - 1);
+    cellInfo.faceBottom.isPartitionInnerFace = partitioning_->ownPartitionContainsBottomBoundary() == false && (jLocal == 0);
+    cellInfo.faceLeft.isPartitionInnerFace = partitioning_->ownPartitionContainsLeftBoundary() == false && (iLocal == 0);
+    return cellInfo;
+}
