@@ -32,15 +32,31 @@ void DomainRBGaussSeidel::solve() {
 
             if (redCellInfo.topIsBoundaryFace()) {
                 p_i_jp1 = p_i_j;
+                if (partitioning_->ownPartitionContainsTopBoundary() && j == discretization_->pJEnd()) {
+                    // Dirichlet BC at top boundary
+                    discretization_->p(i, j + 1) = p_i_jp1; // assuming ghost cell already set to BC value
+                }
             }
             if (redCellInfo.bottomIsBoundaryFace()) {
                 p_i_jm1 = p_i_j;
+                if (partitioning_->ownPartitionContainsBottomBoundary() && j == discretization_->pJBegin()) {
+                    // Dirichlet BC at bottom boundary
+                    discretization_->p(i, j - 1) = p_i_jm1; // assuming ghost cell already set to BC value
+                }
             }
             if (redCellInfo.leftIsBoundaryFace()) {
                 p_im1_j = p_i_j;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && i == discretization_->pIBegin()) {
+                    // Dirichlet BC at left boundary
+                    discretization_->p(i - 1, j) = p_im1_j; // assuming ghost cell already set to BC value
+                }
             }
             if (redCellInfo.rightIsBoundaryFace()) {
                 p_ip1_j = p_i_j;
+                if (partitioning_->ownPartitionContainsRightBoundary() && i == discretization_->pIEnd()) {
+                    // Dirichlet BC at right boundary
+                    discretization_->p(i + 1, j) = p_ip1_j; // assuming ghost cell already set to BC value
+                }
             }
 
             discretization_->p(i,j) = lek * ((p_ip1_j + p_im1_j)/dx2 + (p_i_jp1 + p_i_jm1) / dy2 - discretization_->rhs(i,j));
@@ -64,15 +80,31 @@ void DomainRBGaussSeidel::solve() {
 
             if (blackCellInfo.topIsBoundaryFace()) {
                 p_i_jp1 = p_i_j;
+                if (partitioning_->ownPartitionContainsTopBoundary() && j == discretization_->pJEnd()) {
+                    // Dirichlet BC at top boundary
+                    discretization_->p(i, j + 1) = p_i_jp1; // assuming ghost cell already set to BC value
+                }
             }
             if (blackCellInfo.bottomIsBoundaryFace()) {
                 p_i_jm1 = p_i_j;
+                if (partitioning_->ownPartitionContainsBottomBoundary() && j == discretization_->pJBegin()) {
+                    // Dirichlet BC at bottom boundary
+                    discretization_->p(i, j - 1) = p_i_jm1; // assuming ghost cell already set to BC value
+                }
             }
             if (blackCellInfo.leftIsBoundaryFace()) {
                 p_im1_j = p_i_j;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && i == discretization_->pIBegin()) {
+                    // Dirichlet BC at left boundary
+                    discretization_->p(i - 1, j) = p_im1_j; // assuming ghost cell already set to BC value
+                }
             }
             if (blackCellInfo.rightIsBoundaryFace()) {
                 p_ip1_j = p_i_j;
+                if (partitioning_->ownPartitionContainsRightBoundary() && i == discretization_->pIEnd()) {
+                    // Dirichlet BC at right boundary
+                    discretization_->p(i + 1, j) = p_ip1_j; // assuming ghost cell already set to BC value
+                }
             }
 
             discretization_->p(i,j) = lek * ((p_ip1_j + p_im1_j)/dx2 + (p_i_jp1 + p_i_jm1) / dy2 - discretization_->rhs(i,j));
