@@ -67,6 +67,7 @@ void DomainRBGaussSeidel::solve() {
 
 
         std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
+        n = blackCellsInfo.size();
         for (int idx = 0; idx < n; idx++) {
             CellInfo blackCellInfo = blackCellsInfo[idx];
             int i = blackCellInfo.cellIndexPartition[0];
