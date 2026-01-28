@@ -154,6 +154,26 @@ void DomainComputation::runSimulation() {
 
         computePreliminaryVelocities();
         computeRightHandSide();
+
+        //Print u field for each rank separately with synchronization
+        MPI_Barrier(cartComm_);
+        
+            if (partitioning_->ownRankNo() == 3) {
+                std::cout << "\nVelocity u field (Rank " << 3 << "):" << std::endl;
+                std::cout << partitioning_->ownPartitionContainsLeftBoundary() << std::endl;
+                int nCellsX = discretization_->nCells()[0];
+                int nCellsY = discretization_->nCells()[1];
+                for (int j=nCellsY+2; j >= 0; --j) {
+                    for (int i = 0; i <= nCellsX + 2; ++i) {
+                        std::cout << std::fixed << std::setprecision(4) << discretization_->f(i, j) << " ";
+                    }
+                    std::cout << std::endl;
+                }
+                std::cout.flush();
+            }
+            MPI_Barrier(cartComm_);
+        
+
         computePressure();
         computeVelocities();
 
@@ -575,11 +595,18 @@ void DomainComputation::computePreliminaryVelocities() {
             }
             if (cellInfo.faceRight.dirichletV.has_value()) {
                 v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
+                if (partitioning_->ownPartitionContainsRightBoundary() && (i == discretization_->nCells()[0] +1)) {
+                    discretization_->g(i+1,j) = v_ip1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet right means solid obstacle to the right)
+                }
                 // u_ip1_j does not need to be set since f will not be calculated since if we have a bc to the right, means either dirichlet or neumann for u on the right face, so calcA is false
                 // TODO check if this assumtion holds in the domain.cpp
                 // std::cout << "  Dirichlet V BC: v_ip1_j = " << v_ip1_j << std::endl;
             }  else if (cellInfo.faceRight.neumannV.has_value()) {
                 v_ip1_j = v_i_j + cellInfo.faceRight.neumannV.value() * dx;
+
+                if (partitioning_->ownPartitionContainsRightBoundary() && (i == discretization_->nCells()[0] +1)) {
+                    discretization_->g(i+1,j) = v_ip1_j; // set g to the neumann value (corresponds to a solid cell bc neumann right means solid obstacle to the right)
+                }
                 // std::cout << "  Neumann V BC: v_ip1_j = " << v_ip1_j << std::endl;
             }
         }
@@ -603,11 +630,18 @@ void DomainComputation::computePreliminaryVelocities() {
             // std::cout << "Applying top BC at cell (" << i << ", " << j << ")" << std::endl;
             if (cellInfo.faceTop.dirichletU.has_value()) {
                 u_i_jp1 = 2.0 * cellInfo.faceTop.dirichletU.value() - u_i_j;
+
+                if (partitioning_->ownPartitionContainsTopBoundary() && (j == discretization_->nCells()[1] +1)) {
+                    discretization_->f(i,j+1) = u_i_jp1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet top means solid obstacle to the top)
+                }
                 // by settng u_i_j in the right face bc above first when we do dirichlet there, we effectively prioritize right  faces over top faces if the conditions conflict.
                 // because if we have neumann u at the top and dirichlet u at the rigth it doesnt work so we first set the right face u value and then use it here to set the top ghost value
                 // std::cout << "  Dirichlet U BC: u_i_jp1 = " << u_i_jp1 << std::endl;
             }  else if (cellInfo.faceTop.neumannU.has_value()) {
                 u_i_jp1 = u_i_j + cellInfo.faceTop.neumannU.value() * dy;
+                if (partitioning_->ownPartitionContainsTopBoundary() && (j == discretization_->nCells()[1] +1)) {
+                    discretization_->f(i,j+1) = u_i_jp1; // set f to the neumann value (corresponds to a solid cell bc neumann top means solid obstacle to the top)
+                }
                 // std::cout << "  Neumann U BC: u_i_jp1 = " << u_i_jp1 << std::endl;
             }
         }
@@ -625,8 +659,14 @@ void DomainComputation::computePreliminaryVelocities() {
             } 
             if (cellInfo.faceLeft.dirichletV.has_value()) {
                 v_im1_j = 2.0 * cellInfo.faceLeft.dirichletV.value() - v_i_j;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                    discretization_->g(i-1,j) = v_im1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet left means solid obstacle to the left)
+                }
             }  else if (cellInfo.faceLeft.neumannV.has_value()) {
                 v_im1_j = v_i_j + cellInfo.faceLeft.neumannV.value() * dx;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                    discretization_->g(i-1,j) = v_im1_j; // set g to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
+                }
             }
         }
         if (bottomBC) {
@@ -641,8 +681,14 @@ void DomainComputation::computePreliminaryVelocities() {
             }
             if (cellInfo.faceBottom.dirichletU.has_value()) {
                 u_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletU.value() - u_i_j;
+                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                    discretization_->f(i,j-1) = u_i_jm1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet bottom means solid obstacle to the bottom)
+                }
             }  else if (cellInfo.faceBottom.neumannU.has_value()) {
                 u_i_jm1 = u_i_j + cellInfo.faceBottom.neumannU.value() * dy;     
+                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                    discretization_->f(i,j-1) = u_i_jm1; // set f to the neumann value (corresponds to a solid cell bc neumann bottom means solid obstacle to the bottom)
+                }
             }
             
         }
