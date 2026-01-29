@@ -561,8 +561,14 @@ void DomainComputation::computePreliminaryVelocities() {
             } 
             if (cellInfo.faceLeft.dirichletV.has_value()) {
                 v_im1_j = 2.0 * cellInfo.faceLeft.dirichletV.value() - v_i_j;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                    discretization_->g(i-1,j) = v_im1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet left means solid obstacle to the left)
+                }
             }  else if (cellInfo.faceLeft.neumannV.has_value()) {
                 v_im1_j = v_i_j + cellInfo.faceLeft.neumannV.value() * dx;
+                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                    discretization_->g(i-1,j) = v_im1_j; // set g to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
+                }
             }
         }
         if (cellInfo.faceBottom.isBoundaryFace()) {
@@ -578,8 +584,14 @@ void DomainComputation::computePreliminaryVelocities() {
             }
             if (cellInfo.faceBottom.dirichletU.has_value()) {
                 u_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletU.value() - u_i_j;
+                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                    discretization_->f(i,j-1) = u_i_jm1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet bottom means solid obstacle to the bottom)
+                }
             }  else if (cellInfo.faceBottom.neumannU.has_value()) {
                 u_i_jm1 = u_i_j + cellInfo.faceBottom.neumannU.value() * dy;     
+                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                    discretization_->f(i,j-1) = u_i_jm1; // set f to the neumann value (corresponds to a solid cell bc neumann bottom means solid obstacle to the bottom)
+                }
             }
             
         }
