@@ -23,6 +23,8 @@ void RedBlackGaussSeidel::solve() {
         if ((partitioning_->nodeOffset()[0] + partitioning_->nodeOffset()[1]) % 2 == 1) {
             optionalShift = 1;
         }
+
+        // discretization_->p().printAsArray();
             
         // Red cells: (i+j) % 2 == 0
         for (int j = discretization_->pJBegin(); j <= discretization_->pJEnd(); j++) {

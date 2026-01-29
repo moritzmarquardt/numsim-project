@@ -28,16 +28,16 @@ void DomainPressureSolver::computeResidualNorm() {
         double p_i_jp1 = discretization_->p(i,j+1);
         double p_i_jm1 = discretization_->p(i,j-1);
 
-        if (cellInfo.topIsBoundaryFace()) {
+        if (cellInfo.faceTop.isBoundaryFace()) {
             p_i_jp1 = p_i_j;
         }
-        if (cellInfo.bottomIsBoundaryFace()) {
+        if (cellInfo.faceBottom.isBoundaryFace()) {
             p_i_jm1 = p_i_j;
         }
-        if (cellInfo.leftIsBoundaryFace()) {
+        if (cellInfo.faceLeft.isBoundaryFace()) {
             p_im1_j = p_i_j;
         }
-        if (cellInfo.rightIsBoundaryFace()) {
+        if (cellInfo.faceRight.isBoundaryFace()) {
             p_ip1_j = p_i_j;
         }
 
@@ -80,7 +80,11 @@ void DomainPressureSolver::communicateGhostValues() {
     MPI_Request recvRequestTop, recvRequestBottom, recvRequestLeft, recvRequestRight;
 
     // Fill easy boundary conditions that do not need communication
-    if (!partitioning_->ownPartitionContainsTopBoundary()) {
+    if (partitioning_->ownPartitionContainsTopBoundary()) {
+        for (int i = pIBegin; i <= pIEnd; i++) {
+            discretization_->p(i, pJEnd + 1) = discretization_->p(i, pJEnd);
+        }
+    } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
         }
@@ -90,7 +94,11 @@ void DomainPressureSolver::communicateGhostValues() {
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
-    if (!partitioning_->ownPartitionContainsBottomBoundary()) {
+    if (partitioning_->ownPartitionContainsBottomBoundary()) {
+        for (int i = pIBegin; i <= pIEnd; i++) {
+            discretization_->p(i, pJBegin - 1) = discretization_->p(i, pJBegin);
+        }
+    } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
         }
@@ -98,7 +106,11 @@ void DomainPressureSolver::communicateGhostValues() {
         MPI_Irecv(recvBufferBottom.data(), recvBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &recvRequestBottom);
     }
 
-    if (!partitioning_->ownPartitionContainsLeftBoundary()) {
+    if (partitioning_->ownPartitionContainsLeftBoundary()) {
+        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
+            discretization_->p(pIBegin - 1, j) = discretization_->p(pIBegin, j);
+        }
+    } else {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferLeft[j - pJBegin] = discretization_->p(pIBegin, j);
         }
@@ -106,7 +118,11 @@ void DomainPressureSolver::communicateGhostValues() {
         MPI_Irecv(recvBufferLeft.data(), recvBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &recvRequestLeft);
     }
 
-    if (!partitioning_->ownPartitionContainsRightBoundary()) {
+    if (partitioning_->ownPartitionContainsRightBoundary()) {
+        for (int j = pJBegin - 1; j <= pJEnd + 1; j++) {
+            discretization_->p(pIEnd + 1, j) = discretization_->p(pIEnd, j);
+        }
+    } else {
         for (int j = pJBegin; j <= pJEnd; j++) {
             sendBufferRight[j - pJBegin] = discretization_->p(pIEnd, j);
         }

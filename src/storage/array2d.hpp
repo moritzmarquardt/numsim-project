@@ -53,6 +53,10 @@ public:
 
   Array2D& operator=(const Array2D& other);
 
+  void printArray2D();
+
+  void prettyPrintArray2D();
+
 protected:
 
   std::vector<double> data_;  //< storage array values, in row-major order

@@ -27,30 +27,11 @@ void DomainComputation::initialize(int argc, char *argv[]) {
         int nCellsX = settings_.nCells[0];
         int nCellsY = settings_.nCells[1];
         std::cout << "Obstacle Mask:" << std::endl;
-        for (int j = nCellsY - 1; j >= 0; --j) {
-            for (int i = 0; i < nCellsX; ++i) {
-                std::cout << (obstacleMask(i, j) > 0.5 ? '#' : '.') ;
-            }
-            std::cout << std::endl;
-        }
+        obstacleMask.prettyPrintArray2D();
         std::cout << "Right Faces BC:" << std::endl;
-        for (int j = nCellsY - 1; j >= 0; --j) {
-            for (int i = 0; i < nCellsX + 1; ++i) {
-                double code = rightFacesBC(i, j);
-                char marker = domain_->rightFaceMarkerMap().count(code) ? domain_->rightFaceMarkerMap().at(code) : '?';
-                std::cout << marker ;
-            }
-            std::cout << std::endl;
-        }
+        rightFacesBC.prettyPrintArray2D();
         std::cout << "Top Faces BC:" << std::endl;
-        for (int j = nCellsY; j >= 0; --j) {
-            for (int i = 0; i < nCellsX; ++i) {
-                double code = topFacesBC(i, j);
-                char marker = domain_->topFaceMarkerMap().count(code) ? domain_->topFaceMarkerMap().at(code) : '?';
-                std::cout << marker ;
-            }
-            std::cout << std::endl;
-        }
+        topFacesBC.prettyPrintArray2D();
 
 
         // print the maps of the domain
@@ -115,15 +96,13 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     }
 
     // create pressure solver
-    // TODOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO
+    // TODO
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<DomainRBGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
     } else {
         std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
         std::exit(EXIT_FAILURE);
     }
-    // // Hard code CG
-    // pressureSolver_ = std::make_unique<ParallelCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_);
 
     // create output writers
     outputWriterParaview_ = std::make_unique<OutputWriterParaviewParallel>(discretization_, *partitioning_);
@@ -140,42 +119,53 @@ void DomainComputation::runSimulation() {
     int iterationCount = 0;
     const double time_eps = 1e-8;
     int nOutputs = 1;
+    
+    communicateGhostCells();
 
     while (currentTime < settings_.endTime - time_eps) {
-        communicateGhostCells();
 
         computeTimeStepWidth();
-        dt_ = 0.05;
 
         if (currentTime + dt_ > settings_.endTime - time_eps) {
             dt_ = settings_.endTime - currentTime;
         }
+        if (partitioning_->ownRankNo() == 0) {
+            std::cout << dt_ << std::endl;
+        }
+        
 
 
         computePreliminaryVelocities();
         computeRightHandSide();
 
-        //Print u field for each rank separately with synchronization
         MPI_Barrier(cartComm_);
-        
-            if (partitioning_->ownRankNo() == 3) {
-                std::cout << "\nVelocity u field (Rank " << 3 << "):" << std::endl;
-                std::cout << partitioning_->ownPartitionContainsLeftBoundary() << std::endl;
-                int nCellsX = discretization_->nCells()[0];
-                int nCellsY = discretization_->nCells()[1];
-                for (int j=nCellsY+2; j >= 0; --j) {
-                    for (int i = 0; i <= nCellsX + 2; ++i) {
-                        std::cout << std::fixed << std::setprecision(4) << discretization_->f(i, j) << " ";
-                    }
-                    std::cout << std::endl;
-                }
-                std::cout.flush();
-            }
-            MPI_Barrier(cartComm_);
-        
+        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
+            std::cout << "u before pressure solve:" << std::endl;
+            discretization_->u().printAsArray();
+           std::cout << "f before pressure solve:" << std::endl;
+            discretization_->f().printAsArray();
+            std::cout << "p before pressure solve:" << std::endl;
+            discretization_->p().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
 
         computePressure();
+
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
+            std::cout << "p after pressure solve:" << std::endl;
+            discretization_->p().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
+
         computeVelocities();
+
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
+            std::cout << "u after calculating u:" << std::endl;
+            discretization_->u().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
 
         currentTime += dt_;
         iterationCount++;
@@ -187,56 +177,11 @@ void DomainComputation::runSimulation() {
         //     outputWriterParaview_->writeFile(currentTime);
         //     nOutputs = nOutputs + 1;
         // }
+        communicateGhostCells();
+
         outputWriterParaview_->writeFile(currentTime);
         outputWriterText_->writeFile(currentTime);
     }
-//    computeTimeStepWidth();
-//    std::cout << "Initial time step width dt: " << dt_ << std::endl;
-//    applyInitialBoundaryValues();
-//    computePreliminaryVelocities();
-//    computeVelocities();
-//    communicateGhostCells();
-//    computeTimeStepWidth();
-//    computePreliminaryVelocities();
-//    computeVelocities();
-
-   //print discretization_->u in pretty print
-    // if (partitioning_->ownRankNo() == 0) {
-    
-        // if (partitioning_->ownRankNo() == 0) {
-        //     std::cout << "Velocity u field (Rank 0):" << std::endl;
-        //     int nCellsX = discretization_->nCells()[0];
-        //     int nCellsY = discretization_->nCells()[1];
-        //     for (int j=nCellsY+2; j >= 0; --j) {
-        //         for (int i = 0; i <= nCellsX + 2; ++i) {
-        //             std::cout << std::fixed << std::setprecision(4) << discretization_->u(i, j) << " ";
-        //         }
-        //         std::cout << std::endl;
-        //     }
-        // }
-
-        // Print u field for each rank separately with synchronization
-//         MPI_Barrier(cartComm_);
-//         for (int rank = 0; rank < 4; ++rank) {
-//             if (partitioning_->ownRankNo() == rank) {
-//                 std::cout << "\nVelocity u field (Rank " << rank << "):" << std::endl;
-//                 std::cout << partitioning_->ownPartitionContainsLeftBoundary() << std::endl;
-//                 int nCellsX = discretization_->nCells()[0];
-//                 int nCellsY = discretization_->nCells()[1];
-//                 for (int j=nCellsY+2; j >= 0; --j) {
-//                     for (int i = 0; i <= nCellsX + 2; ++i) {
-//                         std::cout << std::fixed << std::setprecision(4) << discretization_->u(i, j) << " ";
-//                     }
-//                     std::cout << std::endl;
-//                 }
-//                 std::cout.flush();
-//             }
-//             MPI_Barrier(cartComm_);
-//         }
-//     // }
-
-//    outputWriterParaview_->writeFile(currentTime);
-//    outputWriterText_->writeFile(currentTime);
 }
 
 void DomainComputation::printProgress(double &currentTime, int &iterationCount)
@@ -269,41 +214,57 @@ void DomainComputation::printProgress(double &currentTime, int &iterationCount)
 }
 
 void DomainComputation::applyInitialBoundaryValues() {
-    //it is sufficient to only go though all cells and only look at the right and top face since then we will go through all faces exactly once. the values set here are only when we have dirichlet BCs directly orthogonally flowing through the face direction. These are onyl set once in the beginning and then never touched again.
     std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
     int n = fluidCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
         CellInfo cellInfo = fluidCellsInfo[idx];
         if (cellInfo.hasAnyBoundaryFace()) {
-            int i = cellInfo.cellIndexPartition[0];
-            int j = cellInfo.cellIndexPartition[1];
-            // top face
-            if (cellInfo.topIsBoundaryFace() && cellInfo.faceTop.dirichletV.has_value()) {
-                double faceBCValue = cellInfo.faceTop.dirichletV.value();
-                discretization_->v(i, j) = faceBCValue;
-                discretization_->g(i, j) = faceBCValue;
-                // std::cout << "Setting initial top BC at cell (" << i << ", " << j << ") to " << faceBCValue << std::endl;
+            const int i = cellInfo.cellIndexPartition[0];
+            const int j = cellInfo.cellIndexPartition[1];
+
+            if (cellInfo.faceTop.isBoundaryFace()) {
+                if (cellInfo.faceTop.dirichletV.has_value()) {
+                    double faceBCValue = cellInfo.faceTop.dirichletV.value();
+                    discretization_->v(i, j) = faceBCValue;
+                    discretization_->g(i, j) = faceBCValue;
+                }
+                if (cellInfo.faceTop.dirichletU.has_value()) {
+                    discretization_->u(i, j+1) = 2*cellInfo.faceTop.dirichletU.value() - discretization_->u(i, j); // mirror value for u at top face
+                    discretization_->u(i-1, j+1) = 2*cellInfo.faceTop.dirichletU.value() - discretization_->u(i, j); // mirror value for u at top face
+                }
             }
-            // bottom face
-            if (cellInfo.bottomIsBoundaryFace() && cellInfo.faceBottom.dirichletV.has_value()) {
-                double faceBCValue = cellInfo.faceBottom.dirichletV.value();
-                discretization_->v(i, j - 1) = faceBCValue;
-                discretization_->g(i, j - 1) = faceBCValue;
-                // std::cout << "Setting initial bottom BC at cell (" << i << ", " << j - 1 << ") to " << faceBCValue << std::endl;
+            
+            if (cellInfo.faceBottom.isBoundaryFace()) {
+                if (cellInfo.faceBottom.dirichletV.has_value()) {
+                    double faceBCValue = cellInfo.faceBottom.dirichletV.value();
+                    discretization_->v(i, j - 1) = faceBCValue;
+                    discretization_->g(i, j - 1) = faceBCValue;
+                }
+                if (cellInfo.faceBottom.dirichletU.has_value()) {
+                    discretization_->u(i, j-1) = 2*cellInfo.faceBottom.dirichletU.value() - discretization_->u(i, j); // mirror value for u at bottom face
+                }
             }
-            // right face
-            if (cellInfo.rightIsBoundaryFace() && cellInfo.faceRight.dirichletU.has_value()) {
-                double faceBCValue = cellInfo.faceRight.dirichletU.value();
-                discretization_->u(i, j) = faceBCValue;
-                discretization_->f(i, j) = faceBCValue;
-                // std::cout << "Setting initial right BC at cell (" << i << ", " << j << ") to " << faceBCValue << std::endl;
+            
+            if (cellInfo.faceRight.isBoundaryFace()) {
+                if (cellInfo.faceRight.dirichletU.has_value()) {
+                    double faceBCValue = cellInfo.faceRight.dirichletU.value();
+                    discretization_->u(i, j) = faceBCValue;
+                    discretization_->f(i, j) = faceBCValue;
+                }
+                if (cellInfo.faceRight.dirichletV.has_value()) {
+                    discretization_->v(i + 1, j) = 2*cellInfo.faceRight.dirichletV.value() - discretization_->v(i, j); // mirror value for v at right face
+                }
             }
-            // left face
-            if (cellInfo.leftIsBoundaryFace() && cellInfo.faceLeft.dirichletU.has_value()) {
-                double faceBCValue = cellInfo.faceLeft.dirichletU.value();
-                discretization_->u(i - 1, j) = faceBCValue;
-                discretization_->f(i - 1, j) = faceBCValue;
-                // std::cout << "Setting initial left BC at cell (" << i - 1 << ", " << j << ") to " << faceBCValue << std::endl;
+           
+            if (cellInfo.faceLeft.isBoundaryFace()) {
+                if (cellInfo.faceLeft.dirichletU.has_value()) {
+                    double faceBCValue = cellInfo.faceLeft.dirichletU.value();
+                    discretization_->u(i - 1, j) = faceBCValue;
+                    discretization_->f(i - 1, j) = faceBCValue;
+                }
+                if (cellInfo.faceLeft.dirichletV.has_value()) {
+                    discretization_->v(i - 1, j) = 2*cellInfo.faceLeft.dirichletV.value() - discretization_->v(i, j); // mirror value for v at left face
+                }
             }
         }
     }
@@ -311,127 +272,120 @@ void DomainComputation::applyInitialBoundaryValues() {
 
 
 void DomainComputation::communicateGhostCells() {
-    const int uIBegin = 1;
-    const int uIEnd = discretization_->nCells()[0] + 1;
-    const int uJBegin = 1;
-    const int uJEnd = discretization_->uJEnd();
-
-    const int vIBegin = 1;
-    const int vIEnd = discretization_->vIEnd();
-    const int vJBegin = 1;
-    const int vJEnd = discretization_->vJEnd();
+    const int iBegin = 1;
+    const int iEnd = discretization_->nCells()[0] + 2;
+    const int jBegin = 1;
+    const int jEnd = discretization_->nCells()[1] + 2;
+    const int l = iEnd - iBegin + 1;
 
     // buffers for sending and receiving data
-    std::vector<double> sendBufferTopU(uIEnd - uIBegin + 1, 0.0);
-    std::vector<double> sendBufferTopV(vIEnd - vIBegin + 1, 0.0);
-    std::vector<double> sendBufferBottomU(uIEnd - uIBegin + 1, 0.0);
-    std::vector<double> sendBufferBottomV(vIEnd - vIBegin + 1, 0.0);
-    std::vector<double> sendBufferLeftU(uJEnd - uJBegin + 1, 0.0);
-    std::vector<double> sendBufferLeftV(vJEnd - vJBegin + 1, 0.0);
-    std::vector<double> sendBufferRightU(uJEnd - uJBegin + 1, 0.0);
-    std::vector<double> sendBufferRightV(vJEnd - vJBegin + 1, 0.0);
+    std::vector<double> sendBufferTopU(l, 0.0);
+    std::vector<double> sendBufferTopV(l, 0.0);
+    std::vector<double> sendBufferBottomU(l, 0.0);
+    std::vector<double> sendBufferBottomV(l, 0.0);
+    std::vector<double> sendBufferLeftU(l, 0.0);
+    std::vector<double> sendBufferLeftV(l, 0.0);
+    std::vector<double> sendBufferRightU(l, 0.0);
+    std::vector<double> sendBufferRightV(l, 0.0);
 
-    MPI_Request requestsTop, requestsBottom, requestsLeft, requestsRight;
+    // buffors for receiving data
+    std::vector<double> recvBufferTopU(l, 0.0);
+    std::vector<double> recvBufferTopV(l, 0.0);
+    std::vector<double> recvBufferBottomU(l, 0.0);
+    std::vector<double> recvBufferBottomV(l, 0.0);
+    std::vector<double> recvBufferLeftU(l, 0.0);
+    std::vector<double> recvBufferLeftV(l, 0.0);
+    std::vector<double> recvBufferRightU(l, 0.0);
+    std::vector<double> recvBufferRightV(l, 0.0);
+
+    MPI_Request requestsSendTopU, requestsSendTopV, requestsRecvTopU, requestsRecvTopV;
+    MPI_Request requestsSendBottomU, requestsSendBottomV, requestsRecvBottomU, requestsRecvBottomV;
+    MPI_Request requestsSendLeftU, requestsSendLeftV, requestsRecvLeftU, requestsRecvLeftV;
+    MPI_Request requestsSendRightU, requestsSendRightV, requestsRecvRightU, requestsRecvRightV;
     const int TAG_U = 0;
     const int TAG_V = 1;
 
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
         // otherwise communicate with the top neighbour
-        for (int i = uIBegin; i <= uIEnd; i++) {
-            sendBufferTopU[i - uIBegin] = discretization_->u(i,uJEnd);
-        }
-
-        for (int i = vIBegin; i <= vIEnd; i++) {
-            sendBufferTopV[i - vIBegin] = discretization_->v(i,vJEnd - 1);
+        for (int i = iBegin; i <= iEnd; i++) {
+            sendBufferTopU[i - iBegin] = discretization_->u(i,jEnd - 1);
+            sendBufferTopV[i - iBegin] = discretization_->v(i,jEnd - 2);
         }
         // instantiate non-blocking sends and receives
-        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsTop);
-        MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsTop);
+        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsSendTopU);
+        MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsSendTopV);
 
-        MPI_Irecv(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsTop);
-        MPI_Irecv(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsTop);
+        MPI_Irecv(recvBufferTopU.data(), recvBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvTopU);
+        MPI_Irecv(recvBufferTopV.data(), recvBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
     }
     
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
-        for (int i = uIBegin; i <= uIEnd; i++) {
-            sendBufferBottomU[i - uIBegin] = discretization_->u(i,uJBegin);
+        for (int i = iBegin; i <= iEnd; i++) {
+            sendBufferBottomU[i - iBegin] = discretization_->u(i,jBegin + 1);
+            sendBufferBottomV[i - iBegin] = discretization_->v(i,jBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
         }
+        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsSendBottomU);
+        MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsSendBottomV);
 
-        for (int i = vIBegin; i <= vIEnd; i++) {
-            sendBufferBottomV[i - vIBegin] = discretization_->v(i,vJBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
-        }
-        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsBottom);
-        MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsBottom);
-
-        MPI_Irecv(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsBottom);
-        MPI_Irecv(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsBottom);
+        MPI_Irecv(recvBufferBottomU.data(), recvBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvBottomU);
+        MPI_Irecv(recvBufferBottomV.data(), recvBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvBottomV);
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
-        for (int j = uJBegin; j <= uJEnd; j++) {
-            sendBufferLeftU[j - uJBegin] = discretization_->u(uIBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
+        for (int j = jBegin; j <= jEnd; j++) {
+            sendBufferLeftU[j - jBegin] = discretization_->u(iBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
+            sendBufferLeftV[j - jBegin] = discretization_->v(iBegin + 1,j);
         }
-
-        for (int j = vJBegin; j <= vJEnd; j++) {
-            sendBufferLeftV[j - vJBegin] = discretization_->v(vIBegin,j);
-        }
-        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsLeft);
-        MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsLeft);
+        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsSendLeftU);
+        MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsSendLeftV);
         
-        MPI_Irecv(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsLeft);
-        MPI_Irecv(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsLeft);
+        MPI_Irecv(recvBufferLeftU.data(), recvBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvLeftU);
+        MPI_Irecv(recvBufferLeftV.data(), recvBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvLeftV);
     }
 
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
-        for (int j = uJBegin; j <= uJEnd; j++) {
-            sendBufferRightU[j - uJBegin] = discretization_->u(uIEnd - 1,j);
+        for (int j = jBegin; j <= jEnd; j++) {
+            sendBufferRightU[j - jBegin] = discretization_->u(iEnd - 2,j);
+            sendBufferRightV[j - jBegin] = discretization_->v(iEnd - 1,j);
         }
+        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsSendRightU);
+        MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsSendRightV);
 
-        for (int j = vJBegin; j <= vJEnd; j++) {
-            sendBufferRightV[j - vJBegin] = discretization_->v(vIEnd,j);
-        }
-        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRight);
-        MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRight);
-
-        MPI_Irecv(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRight);
-        MPI_Irecv(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRight);
+        MPI_Irecv(recvBufferRightU.data(), recvBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvRightU);
+        MPI_Irecv(recvBufferRightV.data(), recvBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvRightV);
     }
 
     // wait for all communications to finish and set ghost values
     if (!partitioning_->ownPartitionContainsTopBoundary()) {
-        MPI_Wait(&requestsTop, MPI_STATUS_IGNORE);
-        for (int i = uIBegin; i <= uIEnd; i++) {
-            discretization_->u(i,uJEnd + 1) = sendBufferTopU[i - uIBegin];
-        }
-        for (int i = vIBegin; i <= vIEnd; i++) {
-            discretization_->v(i,vJEnd + 1) = sendBufferTopV[i - vIBegin];
+        MPI_Wait(&requestsRecvTopU, MPI_STATUS_IGNORE);
+        MPI_Wait(&requestsRecvTopV, MPI_STATUS_IGNORE);
+        for (int i = iBegin; i <= iEnd; i++) {
+            discretization_->u(i,jEnd) = recvBufferTopU[i - iBegin];
+            discretization_->v(i,jEnd) = recvBufferTopV[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
-        MPI_Wait(&requestsBottom, MPI_STATUS_IGNORE);
-        for (int i = uIBegin; i <= uIEnd; i++) {
-            discretization_->u(i,uJBegin - 1) = sendBufferBottomU[i - uIBegin];
-        }
-        for (int i = vIBegin; i <= vIEnd; i++) {
-            discretization_->v(i,vJBegin - 1) = sendBufferBottomV[i - vIBegin];
+        MPI_Wait(&requestsRecvBottomU, MPI_STATUS_IGNORE);
+        MPI_Wait(&requestsRecvBottomV, MPI_STATUS_IGNORE);
+        for (int i = iBegin; i <= iEnd; i++) {
+            discretization_->u(i,jBegin) = recvBufferBottomU[i - iBegin];
+            discretization_->v(i,jBegin - 1) = recvBufferBottomV[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
-        MPI_Wait(&requestsLeft, MPI_STATUS_IGNORE);
-        for (int j = uJBegin; j <= uJEnd; j++) {
-            discretization_->u(uIBegin - 1,j) = sendBufferLeftU[j - uJBegin];
-        }
-        for (int j = vJBegin; j <= vJEnd; j++) {
-            discretization_->v(vIBegin - 1,j) = sendBufferLeftV[j - vJBegin];
+        MPI_Wait(&requestsRecvLeftU, MPI_STATUS_IGNORE);
+        MPI_Wait(&requestsRecvLeftV, MPI_STATUS_IGNORE);
+        for (int j = jBegin; j <= jEnd; j++) {
+            discretization_->u(iBegin - 1,j) = recvBufferLeftU[j - jBegin];
+            discretization_->v(iBegin,j) = recvBufferLeftV[j - jBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
-        MPI_Wait(&requestsRight, MPI_STATUS_IGNORE);
-        for (int j = uJBegin; j <= uJEnd; j++) {
-            discretization_->u(uIEnd + 1,j) = sendBufferRightU[j - uJBegin];
-        }
-        for (int j = vJBegin; j <= vJEnd; j++) {
-            discretization_->v(vIEnd + 1,j) = sendBufferRightV[j - vJBegin];
+        MPI_Wait(&requestsRecvRightU, MPI_STATUS_IGNORE);
+        MPI_Wait(&requestsRecvRightV, MPI_STATUS_IGNORE);
+        for (int j = jBegin; j <= jEnd; j++) {
+            discretization_->u(iEnd,j) = recvBufferRightU[j - jBegin];
+            discretization_->v(iEnd,j) = recvBufferRightV[j - jBegin];
         }
     }
 }
@@ -536,12 +490,6 @@ void DomainComputation::computePreliminaryVelocities() {
         CellInfo cellInfo = allCellsInfo[idx];
         const int i = cellInfo.cellIndexPartition[0];
         const int j = cellInfo.cellIndexPartition[1];
-        // if (cellInfo.hasAnyBoundaryFace()) {
-            // check which faces are boundary faces and apply one sided stencils accordingly
-        const bool topBC = cellInfo.topIsBoundaryFace();
-        const bool rightBC = cellInfo.rightIsBoundaryFace();
-        const bool bottomBC = cellInfo.bottomIsBoundaryFace();
-        const bool leftBC = cellInfo.leftIsBoundaryFace();
 
         const double u_i_j = discretization_->u(i,j);
         double u_ip1_j = discretization_->u(i+1,j);
@@ -556,103 +504,57 @@ void DomainComputation::computePreliminaryVelocities() {
         double v_ip1_jm1 = discretization_->v(i+1,j-1);
         double v_i_jp1 = discretization_->v(i,j+1);
 
-        bool calcA = true; // corresponds to f
-        bool calcB = true; // correspomds to g
-
-        bool isLeftGhost = i == 1; // these indexes only exist if the cell is a ghost cell
-        bool isBottomGhost = j == 1; 
-        if (isLeftGhost) {
-            // std::cout << "Cell (" << i << ", " << j << ") is a left ghost cell." << std::endl;
-            calcB = false; // in left ghost cells we do not calculate g since v there is only set via communication
-        }
-        if (isBottomGhost) {
-            // std::cout << "Cell (" << i << ", " << j << ") is a bottom ghost cell." << std::endl;
-            calcA = false; // in bottom ghost cells we do not calculate f since u there is only set via communication
-        }
+        bool calcA = !(j == 1); // corresponds to f; is false if the cell is a ghost cell below the partition bc then only g is calculated
+        bool calcB = !(i == 1); // correspomds to g; is false if the cell is a ghost cell left of the partition bc then only f is calculated
 
             
-        if (rightBC) {
-            // std::cout << "Applying right BC at cell (" << i << ", " << j << ")" << std::endl;
+        if (cellInfo.faceRight.isBoundaryFace()) {
             if (cellInfo.faceRight.dirichletU.has_value()) {
                 discretization_->f(i,j) = cellInfo.faceRight.dirichletU.value();
-                // discretization_->u(i,j) = cellInfo.faceRight.dirichletU.value(); // we have to set the values here because in the parallelcomputation we also first apply the boundaries and then compute the preliminary velocities
-                // u_i_j = cellInfo.faceRight.dirichletU.value();
-                // TODO SHould we explicitly set u_i_j and its field variable? OR check for assumtions via debuggint that this value is never touched
                 calcA = false;
-                // std::cout << "  Dirichlet U BC: f(i,j) = " << discretization_->f(i,j) << std::endl;
             } else if (cellInfo.faceRight.neumannU.has_value()) {
                 if (cellInfo.faceLeft.neumannU.has_value()) {
                     std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
-                    // throw error
                     std::exit(EXIT_FAILURE);
                 } else {
                     discretization_->f(i,j) = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
-                    // discretization_->u(i,j) = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
-                    // u_i_j = discretization_->u(i,j);
                     calcA = false;       
                 }
-                // std::cout << "  Neumann U BC: f(i,j) = " << discretization_->f(i,j) << std::endl;
             }
             if (cellInfo.faceRight.dirichletV.has_value()) {
                 v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
-                if (partitioning_->ownPartitionContainsRightBoundary() && (i == discretization_->nCells()[0] +1)) {
-                    discretization_->g(i+1,j) = v_ip1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet right means solid obstacle to the right)
-                }
-                // u_ip1_j does not need to be set since f will not be calculated since if we have a bc to the right, means either dirichlet or neumann for u on the right face, so calcA is false
-                // TODO check if this assumtion holds in the domain.cpp
-                // std::cout << "  Dirichlet V BC: v_ip1_j = " << v_ip1_j << std::endl;
             }  else if (cellInfo.faceRight.neumannV.has_value()) {
                 v_ip1_j = v_i_j + cellInfo.faceRight.neumannV.value() * dx;
-
-                if (partitioning_->ownPartitionContainsRightBoundary() && (i == discretization_->nCells()[0] +1)) {
-                    discretization_->g(i+1,j) = v_ip1_j; // set g to the neumann value (corresponds to a solid cell bc neumann right means solid obstacle to the right)
-                }
-                // std::cout << "  Neumann V BC: v_ip1_j = " << v_ip1_j << std::endl;
             }
         }
 
-        if (topBC) {
+        if (cellInfo.faceTop.isBoundaryFace()) {
             if (cellInfo.faceTop.dirichletV.has_value()) {
                 discretization_->g(i,j) = cellInfo.faceTop.dirichletV.value();
                 calcB = false;
-                // std::cout << "  Dirichlet V BC: g(i,j) = " << discretization_->g(i,j) << std::endl;
             } else if (cellInfo.faceTop.neumannV.has_value()) {
                 if (cellInfo.faceBottom.neumannV.has_value()) {
                     std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
-                    // throw error
                     std::exit(EXIT_FAILURE);
                 } else {
                     discretization_->g(i,j) = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
                     calcB = false;
                 }
-                // std::cout << "  Neumann V BC: g(i,j) = " << discretization_->g(i,j) << std::endl;
             }
-            // std::cout << "Applying top BC at cell (" << i << ", " << j << ")" << std::endl;
             if (cellInfo.faceTop.dirichletU.has_value()) {
                 u_i_jp1 = 2.0 * cellInfo.faceTop.dirichletU.value() - u_i_j;
-
-                if (partitioning_->ownPartitionContainsTopBoundary() && (j == discretization_->nCells()[1] +1)) {
-                    discretization_->f(i,j+1) = u_i_jp1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet top means solid obstacle to the top)
-                }
-                // by settng u_i_j in the right face bc above first when we do dirichlet there, we effectively prioritize right  faces over top faces if the conditions conflict.
-                // because if we have neumann u at the top and dirichlet u at the rigth it doesnt work so we first set the right face u value and then use it here to set the top ghost value
-                // std::cout << "  Dirichlet U BC: u_i_jp1 = " << u_i_jp1 << std::endl;
             }  else if (cellInfo.faceTop.neumannU.has_value()) {
                 u_i_jp1 = u_i_j + cellInfo.faceTop.neumannU.value() * dy;
-                if (partitioning_->ownPartitionContainsTopBoundary() && (j == discretization_->nCells()[1] +1)) {
-                    discretization_->f(i,j+1) = u_i_jp1; // set f to the neumann value (corresponds to a solid cell bc neumann top means solid obstacle to the top)
-                }
-                // std::cout << "  Neumann U BC: u_i_jp1 = " << u_i_jp1 << std::endl;
             }
         }
             
-        if (leftBC) {
-            // std::cout << "Applying left BC at cell (" << i << ", " << j << ")" << std::endl;
+        if (cellInfo.faceLeft.isBoundaryFace()) {
             if (cellInfo.faceLeft.dirichletU.has_value()) {
-                // left boundary has Dirichlet for u, ghost value already set in applyInitialBoundaryValues
-                // u_im1_j = cellInfo.faceLeft.dirichletU.value(); //??????
-                // discretization_->f(i-1,j) = u_im1_j;
-                // continue;
+                // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet u at left face
+                if (discretization_->u(i-1,j) != cellInfo.faceLeft.dirichletU.value()) {
+                    std::cout << "ERROR: Dirichlet u BC at left face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                    std::exit(EXIT_FAILURE);
+                }
             } else if (cellInfo.faceLeft.neumannU.has_value()) { 
                 u_im1_j = u_i_j + cellInfo.faceLeft.neumannU.value() * dx;
                 discretization_->f(i-1,j) = u_im1_j; // set f to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
@@ -669,12 +571,13 @@ void DomainComputation::computePreliminaryVelocities() {
                 }
             }
         }
-        if (bottomBC) {
-            // std::cout << "Applying bottom BC at cell (" << i << ", " << j << ")" << std::endl;
+        if (cellInfo.faceBottom.isBoundaryFace()) {
             if (cellInfo.faceBottom.dirichletV.has_value()) {
-                // bottom boundary has Dirichlet for v, ghost value already set in applyInitialBoundaryValues
-                // v_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletV.value() - v_i_j; //?????
-                // continue;
+                // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet v at bottom face
+                if (discretization_->v(i,j-1) != cellInfo.faceBottom.dirichletV.value()) {
+                    std::cout << "ERROR: Dirichlet v BC at bottom face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                    std::exit(EXIT_FAILURE);
+                }
             } else if (cellInfo.faceBottom.neumannV.has_value()) {
                 v_i_jm1 = v_i_j + cellInfo.faceBottom.neumannV.value() * dy;
                 discretization_->g(i,j-1) = v_i_jm1; // set g to the neumann value
@@ -692,97 +595,16 @@ void DomainComputation::computePreliminaryVelocities() {
             }
             
         }
-            // if (i == 2 && j == 11 && partitioning_->ownRankNo() == 1) {
-            //     std::cout << calcA << "BBBBBBBBBBBBBBBBBBBBBBBBBis calcA for cell (2,11) in rank 1" << std::endl;
-                
-            // }
-
             
         if (calcA) {
-            // if (topBC) {
-            //     std::cout << "  Using one-sided stencil for D2uDy2 at top BC" << std::endl;
-            //     std::cout << "    u_i_jp1 = " << u_i_jp1 << std::endl;
-            //     std::cout << calcA << std::endl;
-            // }
             double A_ij = 1 / settings_.re * (computeD2uDx2(u_ip1_j, u_i_j, u_im1_j) + computeD2uDy2(u_i_jp1, u_i_j, u_i_jm1)) - computeDu2Dx(u_i_j, u_im1_j, u_ip1_j) - computeDuvDy(u_i_j, u_i_jp1, u_i_jm1, v_i_j, v_ip1_j, v_i_jm1, v_ip1_jm1) + settings_.g[0];
             discretization_->f(i,j) = u_i_j + A_ij * dt_;
-            // std::cout << "Applying A_ij calculation at cell (" << i << ", " << j << ") in rank " << partitioning_->ownRankNo() << std::endl;
-            // std::cout << "  Calculated f(i,j) = " << discretization_->f(i,j) << "with A_ij = " << A_ij << "and dt = " << dt_ << std::endl;
         }
 
         if (calcB) {
             double B_ij = 1 / settings_.re * (computeD2vDx2(v_ip1_j, v_i_j, v_im1_j) + computeD2vDy2(v_i_jp1, v_i_j, v_i_jm1)) - computeDuvDx(u_i_j, u_i_jp1, u_im1_j, u_im1_jp1, v_i_j, v_ip1_j, v_im1_j) - computeDv2Dy(v_i_j, v_i_jp1, v_i_jm1) + settings_.g[1];
             discretization_->g(i,j) = v_i_j + B_ij * dt_;   
         }      
-
-        // // } else {
-        //     // inner cell, normal stencil
-            // double A_ij = 1 / settings_.re * ( discretization_->computeD2uDx2(i,j) + discretization_->computeD2uDy2(i,j)) - discretization_->computeDu2Dx(i,j) - discretization_->computeDuvDy(i,j) + settings_.g[0];
-        //     discretization_->f(i,j) = discretization_->u(i,j) + A_ij * dt_;
-
-            // double B_ij = 1 / settings_.re * ( discretization_->computeD2vDx2(i,j) + discretization_->computeD2vDy2(i,j)) - discretization_->computeDuvDx(i,j) - discretization_->computeDv2Dy(i,j) + settings_.g[1];
-        //     discretization_->g(i,j) = discretization_->v(i,j) + B_ij * dt_;
-        //     // if (i == 2 && j == 11 && partitioning_->ownRankNo() == 1) {
-        //     //     std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAis calcA for cell (2,11) in rank 1" << std::endl;
-                
-        //     // }
-        // // }
-        
-
-        // if (!partitioning_->ownPartitionContainsLeftBoundary()) {
-        //     if (i == 2 && cellInfo.leftIsBoundaryFace() == false) {
-        //         std::cout << "Computing left ghost cell for cell (" << i << ", " << j << ")" << std::endl;
-        //         // compute u at left ghost cell if left boundary is in this partition
-        //         // double A_i_minus_1_j = 1 / settings_.re * ( discretization_->computeD2uDx2(i-1,j) + discretization_->computeD2uDy2(i-1,j)) - discretization_->computeDu2Dx(i-1,j) - discretization_->computeDuvDy(i-1,j) + settings_.g[0];
-        //         // discretization_->f(i-1,j) = discretization_->u(i-1,j) + A_i_minus_1_j * dt_;
-        //         // everything same as above but with i-1
-        //         double u_im2_j = discretization_->u(i-2,j);
-        //         double u_im1_jm1 = discretization_->u(i-1,j-1);
-        //         double v_im1_jm1 = discretization_->v(i-1,j-1);
-        //         double A_im1j = 1 / settings_.re * (computeD2uDx2(u_i_j, u_im1_j, u_im2_j) + computeD2uDy2(u_im1_jp1, u_im1_j, u_im1_jm1)) - computeDu2Dx(u_im1_j, u_im2_j, u_i_j) - computeDuvDy(u_im1_j, u_im1_jp1, u_im1_jm1, v_im1_j, v_i_j, v_im1_jm1, v_i_jm1) + settings_.g[0];
-        //         std::cout << "  A_im1j = " << A_im1j << "for left ghost cell at (" << i-1 << ", " << j << ") in rank " << partitioning_->ownRankNo() << std::endl;
-        //         // Print debug info for left ghost cell u calculation only for rank 3 and specific cell
-        //         if (partitioning_->ownRankNo() == 3 && i == 2 && j == 11) {
-        //             std::cout << "\n=== Left Ghost Cell U Calculation Debug (i=" << i << ", j=" << j << ", Rank " << partitioning_->ownRankNo() << ") ===" << std::endl;
-        //             std::cout << "u values:" << std::endl;
-        //             std::cout << "  u_im2_j = u(" << i-2 << "," << j << ") = " << u_im2_j << std::endl;
-        //             std::cout << "  u_im1_j = u(" << i-1 << "," << j << ") = " << u_im1_j << std::endl;
-        //             std::cout << "  u_i_j = u(" << i << "," << j << ") = " << u_i_j << std::endl;
-        //             std::cout << "  u_im1_jm1 = u(" << i-1 << "," << j-1 << ") = " << u_im1_jm1 << std::endl;
-        //             std::cout << "  u_im1_jp1 = u(" << i-1 << "," << j+1 << ") = " << u_im1_jp1 << std::endl;
-        //             std::cout << "v values:" << std::endl;
-        //             std::cout << "  v_im1_j = v(" << i-1 << "," << j << ") = " << v_im1_j << std::endl;
-        //             std::cout << "  v_i_j = v(" << i << "," << j << ") = " << v_i_j << std::endl;
-        //             std::cout << "  v_im1_jm1 = v(" << i-1 << "," << j-1 << ") = " << v_im1_jm1 << std::endl;
-        //             std::cout << "  v_i_jm1 = v(" << i << "," << j-1 << ") = " << v_i_jm1 << std::endl;
-        //             double d2u_dx2 = computeD2uDx2(u_i_j, u_im1_j, u_im2_j);
-        //             double d2u_dy2 = computeD2uDy2(u_im1_jp1, u_im1_j, u_im1_jm1);
-        //             double du2_dx = computeDu2Dx(u_im1_j, u_im2_j, u_i_j);
-        //             double duv_dy = computeDuvDy(u_im1_j, u_im1_jp1, u_im1_jm1, v_im1_j, v_i_j, v_im1_jm1, v_i_jm1);
-        //             std::cout << "Stencil values:" << std::endl;
-        //             std::cout << "  d2u_dx2 = " << d2u_dx2 << std::endl;
-        //             std::cout << "  d2u_dy2 = " << d2u_dy2 << std::endl;
-        //             std::cout << "  du2_dx = " << du2_dx << std::endl;
-        //             std::cout << "  duv_dy = " << duv_dy << std::endl;
-        //             std::cout << "Parameters:" << std::endl;
-        //             std::cout << "  settings_.re = " << settings_.re << std::endl;
-        //             std::cout << "  settings_.g[0] = " << settings_.g[0] << std::endl;
-        //             std::cout << "  dt_ = " << dt_ << std::endl;
-        //         }
-        //         discretization_->f(i-1,j) = u_im1_j + A_im1j * dt_;
-        //     }
-        // }
-        // if (!partitioning_->ownPartitionContainsBottomBoundary()) {
-        //     if (j == 2 && cellInfo.bottomIsBoundaryFace() == false) {
-        //         // std::cout << "Computing bottom ghost cell for cell (" << i << ", " << j << ")" << std::endl;
-        //         // compute v at bottom ghost cell if bottom boundary is in this partition
-        //         double v_i_jm2 = discretization_->v(i,j-2);
-        //         double v_im1_jm1 = discretization_->v(i-1,j-1);
-        //         double u_im1_jm1 = discretization_->u(i-1,j-1);
-        //         double B_ijm1 = 1 / settings_.re * (computeD2vDx2(v_ip1_jm1, v_i_jm1, v_im1_jm1) + computeD2vDy2(v_i_j, v_i_jm1, v_i_jm2)) - computeDuvDx(u_i_jm1, u_i_j, u_im1_jm1, u_im1_j, v_i_jm1, v_ip1_jm1, v_im1_jm1) - computeDv2Dy(v_i_jm1, v_i_j, v_i_jm2) + settings_.g[1];
-        //         discretization_->g(i,j-1) = v_i_j + B_ijm1 * dt_;   
-        //     }
-        // }
     }
 }
 
@@ -808,6 +630,8 @@ void DomainComputation::computePressure() {
 void DomainComputation::computeVelocities() {
     // update velocities based on new pressure field
     std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+    std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
+    fluidCellsInfo.insert(fluidCellsInfo.end(), ghostCellsInfo.begin(), ghostCellsInfo.end()); // add ghost cells, but make sure for these only the faces are calculated that are not ghost faces
     int n = fluidCellsInfo.size();
     for (int idx = 0; idx < n; idx++) {
         CellInfo cellInfo = fluidCellsInfo[idx];
@@ -818,44 +642,33 @@ void DomainComputation::computeVelocities() {
         double p_ip1_j = discretization_->p(i+1,j);
         double p_i_jp1 = discretization_->p(i,j+1);
 
+        bool isLeftGhost = i == 1; // these indexes only exist if the cell is a ghost cell
+        bool isBottomGhost = j == 1; 
 
-        if (!cellInfo.rightIsBoundaryFace()){
-            // std::cout << "Updating u velocity at cell (" << i << ", " << j << ") with f: " << discretization_->f(i,j) << " and pressure gradient: " << computeDpDx(p_ip1_j, p_i_j) << std::endl;
-            discretization_->u(i,j) = discretization_->f(i,j) - dt_ * computeDpDx(p_ip1_j, p_i_j);
-            // std::cout << "  New u(i,j) = " << discretization_->u(i,j) << std::endl;
-        } else if (cellInfo.faceRight.neumannU.has_value()) {
-            // right boundary face
-            // std::cout << "Applying Neumann BC for u velocity at right boundary face of cell (" << i << ", " << j << ") with f: " << discretization_->f(i,j) << std::endl;
-            discretization_->u(i,j) = discretization_->f(i,j);
+        if (!isBottomGhost) {
+            // as long as the cell is not a ghost cell below the partition boundary we can compute u
+            if (!cellInfo.faceRight.isBoundaryFace()){
+                // if it has no boundary face to the right, then p_ip1_j is valid
+                discretization_->u(i,j) = discretization_->f(i,j) - dt_ * computeDpDx(p_ip1_j, p_i_j);
+            } else if (cellInfo.faceRight.neumannU.has_value()) {
+                // right boundary face: p_ip1_j would be the same as p_i_j, so pressure gradient is zero
+                discretization_->u(i,j) = discretization_->f(i,j);
+            }
         }
+        
 
-        if (!cellInfo.topIsBoundaryFace()){
-            discretization_->v(i,j) = discretization_->g(i,j) - dt_ * computeDpDy(p_i_jp1, p_i_j);
-        } else if (cellInfo.faceTop.neumannV.has_value()) {
-            // top boundary face
-            discretization_->v(i,j) = discretization_->g(i,j);
-        }
-
-        if (!partitioning_->ownPartitionContainsLeftBoundary()) {
-            if (!cellInfo.leftIsBoundaryFace() && i-1 == discretization_->uIBegin()) {
-                // std::cout << "Computing left ghost u velocity for cell (" << i << ", " << j << ") with f: " << discretization_->f(i-1,j) << " and pressure gradient: " << computeDpDx(p_i_j, discretization_->p(i-1,j)) << std::endl;
-                discretization_->u(i-1,j) = discretization_->f(i-1,j) - dt_ * computeDpDx(p_i_j, discretization_->p(i-1,j));
-            } else if (cellInfo.faceLeft.neumannU.has_value()) {
-                // left boundary face
-                // std::cout << "Applying Neumann BC for u velocity at left boundary face of cell (" << i << ", " << j << ") with f: " << discretization_->f(i-1,j) << std::endl;
-                discretization_->u(i-1,j) = discretization_->f(i-1,j);
+        if (!isLeftGhost) {
+            // as long as the cell is not a ghost cell left of the partition boundary we can compute v 
+            if (!cellInfo.faceTop.isBoundaryFace()){
+                // if it has no boundary face at the top, then p_i_jp1 is valid
+                discretization_->v(i,j) = discretization_->g(i,j) - dt_ * computeDpDy(p_i_jp1, p_i_j);
+            } else if (cellInfo.faceTop.neumannV.has_value()) {
+                // top boundary face: pressure gradient is zero
+                discretization_->v(i,j) = discretization_->g(i,j);
             }
         }
 
-        if (!partitioning_->ownPartitionContainsBottomBoundary()) {
-            if (!cellInfo.bottomIsBoundaryFace() && j-1 == discretization_->vJBegin()) {
-                discretization_->v(i,j-1) = discretization_->g(i,j-1) - dt_ * computeDpDy(p_i_j, discretization_->p(i,j-1));
-            } else if (cellInfo.faceBottom.neumannV.has_value()) {
-                // bottom boundary face
-                discretization_->v(i,j-1) = discretization_->g(i,j-1);
-            }
-        }
-
+        // TODO check for sanity
         if (partitioning_->ownPartitionContainsTopBoundary()) {
             if (j == discretization_->nCells()[1] + 1) {
                 // top has to be a ghost cell. we have to set u there since paraview output writer needs that ghost u value to interpolate u on the boundary
@@ -863,7 +676,12 @@ void DomainComputation::computeVelocities() {
                     double faceBCValue = cellInfo.faceTop.dirichletU.value();
                     double u_i_j = discretization_->u(i,j);
                     discretization_->u(i,j+1) = 2.0 * faceBCValue - u_i_j;
-                } 
+                } else if (cellInfo.faceTop.neumannU.has_value()) {
+                    // set ghost value based on neumann condition
+                    double neumannValue = cellInfo.faceTop.neumannU.value();
+                    double u_i_j = discretization_->u(i,j);
+                    discretization_->u(i,j+1) = u_i_j + neumannValue * discretization_->dy();
+                }
             }
         }
         if (partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -873,7 +691,12 @@ void DomainComputation::computeVelocities() {
                     double faceBCValue = cellInfo.faceLeft.dirichletV.value();
                     double v_i_j = discretization_->v(i,j);
                     discretization_->v(i-1,j) = 2.0 * faceBCValue - v_i_j;
-                } 
+                } else if (cellInfo.faceLeft.neumannV.has_value()) {
+                    // set ghost value based on neumann condition
+                    double neumannValue = cellInfo.faceLeft.neumannV.value();
+                    double v_i_j = discretization_->v(i,j);
+                    discretization_->v(i-1,j) = v_i_j + neumannValue * discretization_->dx();
+                }
             }   
         }
         if (partitioning_->ownPartitionContainsBottomBoundary()) {
@@ -883,8 +706,12 @@ void DomainComputation::computeVelocities() {
                     double faceBCValue = cellInfo.faceBottom.dirichletU.value();
                     double u_i_j = discretization_->u(i,j);
                     discretization_->u(i,j-1) = 2.0 * faceBCValue - u_i_j;
-                } 
-                // ???? MÜSSEN WIR NEUMANN AUCH BEACHTEN? TODO
+                } else if (cellInfo.faceBottom.neumannU.has_value()) {
+                    // set ghost value based on neumann condition
+                    double neumannValue = cellInfo.faceBottom.neumannU.value();
+                    double u_i_j = discretization_->u(i,j);
+                    discretization_->u(i,j-1) = u_i_j + neumannValue * discretization_->dy();
+                }
             }   
         }
         if (partitioning_->ownPartitionContainsRightBoundary()) {
@@ -894,7 +721,12 @@ void DomainComputation::computeVelocities() {
                     double faceBCValue = cellInfo.faceRight.dirichletV.value();
                     double v_i_j = discretization_->v(i,j);
                     discretization_->v(i+1,j) = 2.0 * faceBCValue - v_i_j;
-                } 
+                } else if (cellInfo.faceRight.neumannV.has_value()) {
+                    // set ghost value based on neumann condition
+                    double neumannValue = cellInfo.faceRight.neumannV.value();
+                    double v_i_j = discretization_->v(i,j);
+                    discretization_->v(i+1,j) = v_i_j + neumannValue * discretization_->dx();
+                }
             }
         }
     }
