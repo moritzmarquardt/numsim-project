@@ -27,6 +27,8 @@ public:
     // get a reference to the field variable p
     const FieldVariable &p() const;
 
+    const FieldVariable &f() const;
+
     // get value of u in element (i,j) 
     double u(int i, int j) const;
 

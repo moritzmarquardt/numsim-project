@@ -1,4 +1,5 @@
 #include "computation/domainComputation.hpp"
+#include "computation/parallelComputation.hpp"
 #include <iostream>
 
 #include <cstdlib>
@@ -13,6 +14,7 @@ int main(int argc, char *argv[])
   int rank;
     
   DomainComputation computation;
+  // ParallelComputation computation;
   computation.initialize(argc, argv);
 
   rank = computation.getRankNo();

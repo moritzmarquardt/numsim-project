@@ -1,5 +1,7 @@
 #include "array2d.hpp"
 
+#include <iostream>
+#include <iomanip>
 #include <stdexcept>
 
 // constructor
@@ -38,4 +40,22 @@ Array2D& Array2D::operator=(const Array2D& other) {
 
     // Return a reference to this
     return *this;
+}
+
+void Array2D::printArray2D() {
+    for (int j = this->size()[1] - 1; j >= 0; --j) {
+        for (int i = 0; i < this->size()[0]; ++i) {
+            std::cout << (*this)(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
+}
+
+void Array2D::prettyPrintArray2D() {
+    for (int j = this->size()[1] - 1; j >= 0; --j) {
+        for (int i = 0; i < this->size()[0]; ++i) {
+            std::cout << std::setw(8) << std::setprecision(4) << (*this)(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
 }

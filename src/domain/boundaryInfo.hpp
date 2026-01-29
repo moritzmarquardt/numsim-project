@@ -10,6 +10,19 @@ struct BoundaryInfo {
     // only neumar or dirichlet conditions can be set for u and v on each face
     bool isPartitionInnerFace = false; // true if this face is a partition boundary face inside the domain. false if it is a physical boundary face or inside the partition
 
+    bool isBoundaryFace() const {
+        return dirichletU.has_value() || dirichletV.has_value() || neumannU.has_value() || neumannV.has_value();
+    }
+
+    bool hasUBC() const {
+        return dirichletU.has_value() || neumannU.has_value();
+    }
+
+    bool hasVBC() const {
+        return dirichletV.has_value() || neumannV.has_value();
+    }
+
+
     // implement a toString method for pretty printing
     std::string toString() const {
         std::string result = "BoundaryInfo(";

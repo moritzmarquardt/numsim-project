@@ -59,21 +59,47 @@ void ParallelComputation::runSimulation() {
         if (currentTime + dt_ > settings_.endTime - time_eps) {
             dt_ = settings_.endTime - currentTime;
         }
-
+        if (partitioning_->ownRankNo() == 0) {
+            std::cout << dt_ << std::endl;
+        }
 
         computePreliminaryVelocities();
         computeRightHandSide();
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == 1 && iterationCount < 2) {
+            std::cout << "u before pressure solve:" << std::endl;
+            discretization_->u().printAsArray();
+           std::cout << "f before pressure solve:" << std::endl;
+            discretization_->f().printAsArray();
+            std::cout << "p before pressure solve:" << std::endl;
+            discretization_->p().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
         computePressure();
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == 1 && iterationCount < 2) {
+            std::cout << "p after pressure solve:" << std::endl;
+            discretization_->p().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
+
         computeVelocities();
+
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == 1 && iterationCount < 2) {
+            std::cout << "u after calculating u:" << std::endl;
+            discretization_->u().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
 
         currentTime += dt_;
         iterationCount++;
 
         // this was the fix!!!
-        // if (currentTime >= nOutputs) {
-        //     outputWriterParaview_->writeFile(currentTime);
-        //     nOutputs = nOutputs + 1;
-        // }
+        if (currentTime >= nOutputs) {
+            outputWriterParaview_->writeFile(currentTime);
+            nOutputs = nOutputs + 1;
+        }
         // only last time step is written
         // if (currentTime >= settings_.endTime - time_eps) {
         //     outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
@@ -81,7 +107,7 @@ void ParallelComputation::runSimulation() {
         
        
     }
-    outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
+    // outputWriterParaview_->writeFileWithNumber(currentTime, simNumber_);
 
 }
 

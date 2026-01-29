@@ -37,6 +37,10 @@ class DomainComputation : public Computation {
     protected:        
         /**
          * Apply initial boundary values to the ghost nodes before starting the simulation
+         * it is sufficient to only go though all cells and only look at the right and top face since then we will go through all faces exactly once. 
+         * the values set here are only when we have dirichlet BCs directly orthogonally flowing through the face direction. 
+         * These are onyl set once in the beginning and then never touched again. 
+         * we set also the mirror values for the parralel velocities at the faces here to make the first calculation of the time step witdh correct.
          */
         void applyInitialBoundaryValues() override;
 
