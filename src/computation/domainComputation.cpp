@@ -129,9 +129,6 @@ void DomainComputation::runSimulation() {
         if (currentTime + dt_ > settings_.endTime - time_eps) {
             dt_ = settings_.endTime - currentTime;
         }
-        if (partitioning_->ownRankNo() == 0) {
-            std::cout << dt_ << std::endl;
-        }
         
 
 
