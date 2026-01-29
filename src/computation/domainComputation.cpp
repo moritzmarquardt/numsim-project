@@ -142,7 +142,7 @@ void DomainComputation::runSimulation() {
         if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
             std::cout << "u before pressure solve:" << std::endl;
             discretization_->u().printAsArray();
-           std::cout << "f before pressure solve:" << std::endl;
+            std::cout << "f before pressure solve:" << std::endl;
             discretization_->f().printAsArray();
             std::cout << "p before pressure solve:" << std::endl;
             discretization_->p().printAsArray();
@@ -222,7 +222,7 @@ void DomainComputation::applyInitialBoundaryValues() {
             const int i = cellInfo.cellIndexPartition[0];
             const int j = cellInfo.cellIndexPartition[1];
 
-            if (cellInfo.faceTop.isBoundaryFace()) {
+            if (cellInfo.faceTop.isBoundaryFace() && !cellInfo.faceRight.isBoundaryFace() && !cellInfo.faceLeft.isBoundaryFace()) {
                 if (cellInfo.faceTop.dirichletV.has_value()) {
                     double faceBCValue = cellInfo.faceTop.dirichletV.value();
                     discretization_->v(i, j) = faceBCValue;
@@ -230,11 +230,11 @@ void DomainComputation::applyInitialBoundaryValues() {
                 }
                 if (cellInfo.faceTop.dirichletU.has_value()) {
                     discretization_->u(i, j+1) = 2*cellInfo.faceTop.dirichletU.value() - discretization_->u(i, j); // mirror value for u at top face
-                    discretization_->u(i-1, j+1) = 2*cellInfo.faceTop.dirichletU.value() - discretization_->u(i, j); // mirror value for u at top face
+                    // discretization_->u(i-1, j+1) = 2*cellInfo.faceTop.dirichletU.value() - discretization_->u(i, j); // mirror value for u at top face
                 }
             }
             
-            if (cellInfo.faceBottom.isBoundaryFace()) {
+            if (cellInfo.faceBottom.isBoundaryFace() && !cellInfo.faceRight.isBoundaryFace() && !cellInfo.faceLeft.isBoundaryFace()) {
                 if (cellInfo.faceBottom.dirichletV.has_value()) {
                     double faceBCValue = cellInfo.faceBottom.dirichletV.value();
                     discretization_->v(i, j - 1) = faceBCValue;
@@ -669,10 +669,10 @@ void DomainComputation::computeVelocities() {
         }
 
         // TODO check for sanity
-        if (partitioning_->ownPartitionContainsTopBoundary()) {
+        if (partitioning_->ownPartitionContainsTopBoundary() && !cellInfo.faceRight.isBoundaryFace()) {
             if (j == discretization_->nCells()[1] + 1) {
                 // top has to be a ghost cell. we have to set u there since paraview output writer needs that ghost u value to interpolate u on the boundary
-                if (cellInfo.faceTop.dirichletU.has_value()) {
+                if (cellInfo.faceTop.dirichletU.has_value() ) {
                     double faceBCValue = cellInfo.faceTop.dirichletU.value();
                     double u_i_j = discretization_->u(i,j);
                     discretization_->u(i,j+1) = 2.0 * faceBCValue - u_i_j;
@@ -699,7 +699,7 @@ void DomainComputation::computeVelocities() {
                 }
             }   
         }
-        if (partitioning_->ownPartitionContainsBottomBoundary()) {
+        if (partitioning_->ownPartitionContainsBottomBoundary() && !cellInfo.faceRight.isBoundaryFace()) {
             if (j == 2) {
                 // bottom has to be a ghost cell. we have to set u there since paraview output writer needs that ghost u value to interpolate u on the boundary
                 if (cellInfo.faceBottom.dirichletU.has_value()) {

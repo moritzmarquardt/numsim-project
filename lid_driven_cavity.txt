@@ -12,7 +12,7 @@ gY = 0.0
 # Dirichlet boundary conditions
 dirichletBottomX = 0
 dirichletBottomY = 0
-dirichletTopX    = 1
+dirichletTopX    = 0
 dirichletTopY    = 0
 dirichletLeftX   = 0
 dirichletLeftY   = 0
