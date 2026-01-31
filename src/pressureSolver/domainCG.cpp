@@ -33,7 +33,7 @@ void DomainCG::solve() {
     // compute initial residual r = b - A*p and set direction = z = M^{-1} r
     std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
 
-    // check if bsum approx 0
+    // check compatibility condition for Neumann Poisson problem and enforce zero-mean RHS
     double bsum_local = 0.0;
     long nfluid_local = 0;
 
@@ -50,10 +50,17 @@ void DomainCG::solve() {
     MPI_Allreduce(&bsum_local, &bsum_global, 1, MPI_DOUBLE, MPI_SUM, cartComm_);
     MPI_Allreduce(&nfluid_local, &nfluid_global, 1, MPI_LONG,   MPI_SUM, cartComm_);
 
-    const double bmean = bsum_global / (double)nfluid_global;
+    const double bmean = bsum_global / static_cast<double>(nfluid_global);
 
-    std::cout << "bmean: " << bmean << std::endl;
+    // shift RHS so that its mean over all fluid cells is zero: sum(b) = 0
+    for (const CellInfo& cellInfo : fluidCellsInfo) {
+        int i = cellInfo.cellIndexPartition[0];
+        int j = cellInfo.cellIndexPartition[1];
+        discretization_->rhs(i,j) -= bmean;
+    }
 
+    // ensure pressure ghost values are up to date before computing A*p
+    communicateGhostValues();
 
     for (const CellInfo& cellInfo : fluidCellsInfo) {
         int i = cellInfo.cellIndexPartition[0];
