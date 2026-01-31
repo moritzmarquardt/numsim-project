@@ -114,6 +114,19 @@ void DomainComputation::initialize(int argc, char *argv[]) {
 
 void DomainComputation::runSimulation() {
     applyInitialBoundaryValues();
+    std::cout << "current rank: " << partitioning_->ownRankNo() << " applied initial boundary values." << std::endl;
+
+    const int verbose_rank = 0; // rank to print debug info
+    std::cout << "printing debug info for rank " << verbose_rank << std::endl;
+
+    MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == verbose_rank) {
+            std::cout << "u after initial boundary values:" << std::endl;
+            discretization_->u().printAsArray();
+            std::cout << "v after initial boundary values:" << std::endl;
+            discretization_->v().printAsArray();
+        }
+    MPI_Barrier(cartComm_);
 
     double currentTime = 0.0;
     int iterationCount = 0;
@@ -121,6 +134,15 @@ void DomainComputation::runSimulation() {
     int nOutputs = 1;
     
     communicateGhostCells();
+
+    MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == verbose_rank) {
+            std::cout << "u after initial ghost cell communication:" << std::endl;
+            discretization_->u().printAsArray();
+            std::cout << "v after initial ghost cell communication:" << std::endl;
+            discretization_->v().printAsArray();
+        }
+    MPI_Barrier(cartComm_);
 
     while (currentTime < settings_.endTime - time_eps) {
 
@@ -130,17 +152,15 @@ void DomainComputation::runSimulation() {
             dt_ = settings_.endTime - currentTime;
         }
         
-
-
         computePreliminaryVelocities();
         computeRightHandSide();
 
         MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
-            std::cout << "u before pressure solve:" << std::endl;
-            discretization_->u().printAsArray();
+        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
             std::cout << "f before pressure solve:" << std::endl;
             discretization_->f().printAsArray();
+            std::cout << "g before pressure solve:" << std::endl;
+            discretization_->g().printAsArray();
             std::cout << "p before pressure solve:" << std::endl;
             discretization_->p().printAsArray();
         }
@@ -149,7 +169,7 @@ void DomainComputation::runSimulation() {
         computePressure();
 
         MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
+        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
             std::cout << "p after pressure solve:" << std::endl;
             discretization_->p().printAsArray();
         }
@@ -158,9 +178,11 @@ void DomainComputation::runSimulation() {
         computeVelocities();
 
         MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == 3 && iterationCount < 2) {
+        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
             std::cout << "u after calculating u:" << std::endl;
             discretization_->u().printAsArray();
+            std::cout << "v after calculating v:" << std::endl;
+            discretization_->v().printAsArray();
         }
         MPI_Barrier(cartComm_);
 

@@ -28,6 +28,7 @@ public:
     const FieldVariable &p() const;
 
     const FieldVariable &f() const;
+    const FieldVariable &g() const;
 
     // get value of u in element (i,j) 
     double u(int i, int j) const;
