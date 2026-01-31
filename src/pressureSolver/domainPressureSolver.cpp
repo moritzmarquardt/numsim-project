@@ -164,3 +164,38 @@ void DomainPressureSolver::communicateGhostValues() {
         }
     }
 }
+
+void DomainPressureSolver::zeroMeanPressure() {
+    double localSum = 0.0;
+    int localCount = 0;
+
+    std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+    int n = fluidCellsInfo.size();
+    for (int idx = 0; idx < n; idx++) {
+        CellInfo cellInfo = fluidCellsInfo[idx];
+        int i = cellInfo.cellIndexPartition[0];
+        int j = cellInfo.cellIndexPartition[1];
+
+        localSum += discretization_->p(i, j);
+        localCount++;
+    }
+
+    double globalSum = 0.0;
+    int globalCount = 0;
+
+    MPI_Allreduce(&localSum, &globalSum, 1, MPI_DOUBLE, MPI_SUM, cartComm_);
+    MPI_Allreduce(&localCount, &globalCount, 1, MPI_INT, MPI_SUM, cartComm_);
+
+    double meanPressure = globalSum / globalCount;
+
+    // Subtract mean pressure from local pressures
+
+    for (int i = 1; i < discretization_->pIEnd() + 2; i++) {
+        for (int j = 1; j < discretization_->pJEnd() + 2; j++) {
+            if (discretization_->p(i, j) != 0.0) { // only adjust fluid cells
+                discretization_->p(i, j) -= meanPressure;
+            }
+            
+        }
+    }
+}

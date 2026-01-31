@@ -222,7 +222,9 @@ void DomainRBGaussSeidel::solve() {
         
         // Compute residual norm after full iteration
         computeResidualNorm();
+
     }
     
     this->numberOfIterations_ = iter;
+    zeroMeanPressure();
 }
