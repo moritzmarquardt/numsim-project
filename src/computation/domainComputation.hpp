@@ -11,7 +11,9 @@
 #include "pressureSolver/domainRBGaussSeidel.hpp"
 #include "pressureSolver/RedBlackSOR.hpp"
 #include "pressureSolver/parallelCG.hpp"
+#include "pressureSolver/domainCG.hpp"
 #include "domain/domain.hpp"
+    
 
 class DomainComputation : public Computation {
     public:

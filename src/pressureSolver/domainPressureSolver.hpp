@@ -20,7 +20,8 @@ public:
 protected:
     void computeResidualNorm() override;
     void communicateGhostValues();
-    void zeroMeanPressure(); 
+    void zeroMeanPressure();
+    void fixPressureValue();
 
     std::shared_ptr<Partitioning> partitioning_;
     std::shared_ptr<Domain> domain_;

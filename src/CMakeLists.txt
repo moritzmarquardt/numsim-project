@@ -35,6 +35,7 @@ add_executable(${PROJECT_NAME}
     computation/domainComputation.cpp
     pressureSolver/domainPressureSolver.cpp
     pressureSolver/domainRBGaussSeidel.cpp
+    pressureSolver/domainCG.cpp
 )
 
 # Add the project directory to include directories, to be able to include all project header files from anywhere

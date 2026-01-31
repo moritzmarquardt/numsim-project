@@ -99,6 +99,8 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     // TODO
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<DomainRBGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
+    } else if (settings_.pressureSolver == "CG") {
+        pressureSolver_ =  std::make_unique<DomainCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
     } else {
         std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
         std::exit(EXIT_FAILURE);
