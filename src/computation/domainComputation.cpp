@@ -54,34 +54,34 @@ void DomainComputation::initialize(int argc, char *argv[]) {
         }
 
         // print lists of cells
-        std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
-        std::cout << "All Cells Info List:" << std::endl;
-        for (const auto& cellInfo : allCellsInfo) {
-            std::cout << cellInfo.toString() << std::endl; 
-        }
-        std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
-        std::cout << "Fluid Cells Info List:" << std::endl;
-        for (const auto& cellInfo : fluidCellsInfo) {
-            std::cout << cellInfo.toString() << std::endl;
-        }
-        std::vector<CellInfo> redCellsInfo = domain_->getRedListFluid();
-        std::cout << "Red Fluid Cells Info List:" << std::endl;
-        for (const auto& cellInfo : redCellsInfo) {
-            std::cout << cellInfo.toString() << std::endl;
-        }
+        // std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
+        // std::cout << "All Cells Info List:" << std::endl;
+        // for (const auto& cellInfo : allCellsInfo) {
+        //     std::cout << cellInfo.toString() << std::endl; 
+        // }
+        // std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
+        // std::cout << "Fluid Cells Info List:" << std::endl;
+        // for (const auto& cellInfo : fluidCellsInfo) {
+        //     std::cout << cellInfo.toString() << std::endl;
+        // }
+        // std::vector<CellInfo> redCellsInfo = domain_->getRedListFluid();
+        // std::cout << "Red Fluid Cells Info List:" << std::endl;
+        // for (const auto& cellInfo : redCellsInfo) {
+        //     std::cout << cellInfo.toString() << std::endl;
+        // }
 
-        std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
-        std::cout << "Black Fluid Cells Info List:" << std::endl;
-        for (const auto& cellInfo : blackCellsInfo) {
-            std::cout << cellInfo.toString() << std::endl;
-        }
+        // std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
+        // std::cout << "Black Fluid Cells Info List:" << std::endl;
+        // for (const auto& cellInfo : blackCellsInfo) {
+        //     std::cout << cellInfo.toString() << std::endl;
+        // }
 
-        std::cout << "Ghost Cells Info List:" << std::endl;
-        std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
-        std::cout << "Ghost Cells Info List length: " << ghostCellsInfo.size() << std::endl;
-        for (const auto& cellInfo : ghostCellsInfo) {
-            std::cout << cellInfo.toString() << std::endl;
-        }
+        // std::cout << "Ghost Cells Info List:" << std::endl;
+        // std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
+        // std::cout << "Ghost Cells Info List length: " << ghostCellsInfo.size() << std::endl;
+        // for (const auto& cellInfo : ghostCellsInfo) {
+        //     std::cout << cellInfo.toString() << std::endl;
+        // }
 
     }
 

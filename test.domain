@@ -55,9 +55,10 @@ c-------------------d
 
 FacesTop: (20x21)
 a: u_D=0, v_D=-1; # (dirichlet)
+c: u_D=0, v_D=0;
 b: u_N=0, v_N=0; 
 s: u_N=0, v_N=0; # (slip)
-aaaaaaaaaaaaaaaaaaaa
+ccccaaaaaaaaaaaacccc
 --------------------
 --------------------
 --------------------

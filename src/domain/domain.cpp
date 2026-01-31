@@ -365,10 +365,10 @@ void Domain::readDomainFile(const std::string& filename) {
             int jGlobal = jLocal + yOffset;
             int iLocal = - 1;  // leftmost column in partition
             int iGlobal = iLocal + xOffset;
-            std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
+            // std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
             
             CellInfo cellInfo = createCellInfo(iGlobal, jGlobal, iLocal, jLocal, nCellsXLocal, nCellsYLocal);
-            std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
+            // std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
             ghostListLocal_->push_back(cellInfo);
         }
     }
@@ -379,10 +379,10 @@ void Domain::readDomainFile(const std::string& filename) {
             int iGlobal = iLocal + xOffset;
             int jLocal = - 1;  // bottommost row in partition
             int jGlobal = jLocal + yOffset;
-            std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
+            // std::cout << "Adding ghost cell at global (" << iGlobal << ", " << jGlobal << "), local (" << iLocal << ", " << jLocal << ")" << std::endl;
             
             CellInfo cellInfo = createCellInfo(iGlobal, jGlobal, iLocal, jLocal, nCellsXLocal, nCellsYLocal);
-            std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
+            // std::cout << "  CellInfo: " << cellInfo.toString() << std::endl;
             
             ghostListLocal_->push_back(cellInfo);
         }
