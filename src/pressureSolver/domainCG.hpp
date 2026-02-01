@@ -31,5 +31,9 @@ private:
     std::vector<double> sendBufferBottomDirection_;
     std::vector<double> sendBufferLeftDirection_;
     std::vector<double> sendBufferRightDirection_;
+    std::vector<double> recvBufferTopDirection_;
+    std::vector<double> recvBufferBottomDirection_;
+    std::vector<double> recvBufferLeftDirection_;
+    std::vector<double> recvBufferRightDirection_;
 
 };

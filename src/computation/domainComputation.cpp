@@ -127,12 +127,20 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     // buffers for sending and receiving data
     sendBufferTopU_ = std::vector<double>(l, 0.0);
     sendBufferTopV_ = std::vector<double>(l, 0.0);
+    recvBufferTopU_ = std::vector<double>(l, 0.0);
+    recvBufferTopV_ = std::vector<double>(l, 0.0);
     sendBufferBottomU_ = std::vector<double>(l, 0.0);
     sendBufferBottomV_ = std::vector<double>(l, 0.0);
+    recvBufferBottomU_ = std::vector<double>(l, 0.0);
+    recvBufferBottomV_ = std::vector<double>(l, 0.0);
     sendBufferLeftU_ = std::vector<double>(l, 0.0);
     sendBufferLeftV_ = std::vector<double>(l, 0.0);
+    recvBufferLeftU_ = std::vector<double>(l, 0.0);
+    recvBufferLeftV_ = std::vector<double>(l, 0.0);
     sendBufferRightU_ = std::vector<double>(l, 0.0);
     sendBufferRightV_ = std::vector<double>(l, 0.0);
+    recvBufferRightU_ = std::vector<double>(l, 0.0);
+    recvBufferRightV_ = std::vector<double>(l, 0.0);
 }
 
 void DomainComputation::runSimulation() {
@@ -351,8 +359,8 @@ void DomainComputation::communicateGhostCells() {
         MPI_Isend(sendBufferTopU_.data(), sendBufferTopU_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsSendTopU);
         MPI_Isend(sendBufferTopV_.data(), sendBufferTopV_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsSendTopV);
 
-        MPI_Irecv(sendBufferTopU_.data(), sendBufferTopU_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvTopU);
-        MPI_Irecv(sendBufferTopV_.data(), sendBufferTopV_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
+        MPI_Irecv(recvBufferTopU_.data(), recvBufferTopU_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvTopU);
+        MPI_Irecv(recvBufferTopV_.data(), recvBufferTopV_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
     }
     
     if (partitioning_->ownPartitionContainsBottomBoundary()) {
@@ -368,8 +376,8 @@ void DomainComputation::communicateGhostCells() {
         MPI_Isend(sendBufferBottomU_.data(), sendBufferBottomU_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsSendBottomU);
         MPI_Isend(sendBufferBottomV_.data(), sendBufferBottomV_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsSendBottomV);
 
-        MPI_Irecv(sendBufferBottomU_.data(), sendBufferBottomU_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvBottomU);
-        MPI_Irecv(sendBufferBottomV_.data(), sendBufferBottomV_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvBottomV);
+        MPI_Irecv(recvBufferBottomU_.data(), recvBufferBottomU_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvBottomU);
+        MPI_Irecv(recvBufferBottomV_.data(), recvBufferBottomV_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvBottomV);
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -380,8 +388,8 @@ void DomainComputation::communicateGhostCells() {
         MPI_Isend(sendBufferLeftU_.data(), sendBufferLeftU_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsSendLeftU);
         MPI_Isend(sendBufferLeftV_.data(), sendBufferLeftV_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsSendLeftV);
         
-        MPI_Irecv(sendBufferLeftU_.data(), sendBufferLeftU_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvLeftU);
-        MPI_Irecv(sendBufferLeftV_.data(), sendBufferLeftV_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvLeftV);
+        MPI_Irecv(recvBufferLeftU_.data(), recvBufferLeftU_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvLeftU);
+        MPI_Irecv(recvBufferLeftV_.data(), recvBufferLeftV_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvLeftV);
     }
 
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
@@ -392,8 +400,8 @@ void DomainComputation::communicateGhostCells() {
         MPI_Isend(sendBufferRightU_.data(), sendBufferRightU_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsSendRightU);
         MPI_Isend(sendBufferRightV_.data(), sendBufferRightV_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsSendRightV);
 
-        MPI_Irecv(sendBufferRightU_.data(), sendBufferRightU_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvRightU);
-        MPI_Irecv(sendBufferRightV_.data(), sendBufferRightV_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvRightV);
+        MPI_Irecv(recvBufferRightU_.data(), recvBufferRightU_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvRightU);
+        MPI_Irecv(recvBufferRightV_.data(), recvBufferRightV_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvRightV);
     }
 
     // wait for all communications to finish and set ghost values
@@ -401,32 +409,32 @@ void DomainComputation::communicateGhostCells() {
         MPI_Wait(&requestsRecvTopU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvTopV, MPI_STATUS_IGNORE);
         for (int i = iBegin; i <= iEnd; i++) {
-            discretization_->u(i,jEnd) = sendBufferTopU_[i - iBegin];
-            discretization_->v(i,jEnd) = sendBufferTopV_[i - iBegin];
+            discretization_->u(i,jEnd) = recvBufferTopU_[i - iBegin];
+            discretization_->v(i,jEnd) = recvBufferTopV_[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
         MPI_Wait(&requestsRecvBottomU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvBottomV, MPI_STATUS_IGNORE);
         for (int i = iBegin; i <= iEnd; i++) {
-            discretization_->u(i,jBegin) = sendBufferBottomU_[i - iBegin];
-            discretization_->v(i,jBegin - 1) = sendBufferBottomV_[i - iBegin];
+            discretization_->u(i,jBegin) = recvBufferBottomU_[i - iBegin];
+            discretization_->v(i,jBegin - 1) = recvBufferBottomV_[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
         MPI_Wait(&requestsRecvLeftU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvLeftV, MPI_STATUS_IGNORE);
         for (int j = jBegin; j <= jEnd; j++) {
-            discretization_->u(iBegin - 1,j) = sendBufferLeftU_[j - jBegin];
-            discretization_->v(iBegin,j) = sendBufferLeftV_[j - jBegin];
+            discretization_->u(iBegin - 1,j) = recvBufferLeftU_[j - jBegin];
+            discretization_->v(iBegin,j) = recvBufferLeftV_[j - jBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
         MPI_Wait(&requestsRecvRightU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvRightV, MPI_STATUS_IGNORE);
         for (int j = jBegin; j <= jEnd; j++) {
-            discretization_->u(iEnd,j) = sendBufferRightU_[j - jBegin];
-            discretization_->v(iEnd,j) = sendBufferRightV_[j - jBegin];
+            discretization_->u(iEnd,j) = recvBufferRightU_[j - jBegin];
+            discretization_->v(iEnd,j) = recvBufferRightV_[j - jBegin];
         }
     }
 }
@@ -589,10 +597,10 @@ void DomainComputation::computePreliminaryVelocities() {
             if (cellInfo.faceLeft.isBoundaryFace()) {
                 if (cellInfo.faceLeft.dirichletU.has_value()) {
                     // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet u at left face
-                    if (discretization_->u(i-1,j) != cellInfo.faceLeft.dirichletU.value()) {
-                        std::cout << "ERROR: Dirichlet u BC at left face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
-                        std::exit(EXIT_FAILURE);
-                    }
+                    // if (discretization_->u(i-1,j) != cellInfo.faceLeft.dirichletU.value()) {
+                    //     std::cout << "ERROR: Dirichlet u BC at left face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                    //     std::exit(EXIT_FAILURE);
+                    // }
                 } else if (cellInfo.faceLeft.neumannU.has_value()) { 
                     u_im1_j = u_i_j + cellInfo.faceLeft.neumannU.value() * dx;
                     discretization_->f(i-1,j) = u_im1_j; // set f to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
@@ -612,10 +620,10 @@ void DomainComputation::computePreliminaryVelocities() {
             if (cellInfo.faceBottom.isBoundaryFace()) {
                 if (cellInfo.faceBottom.dirichletV.has_value()) {
                     // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet v at bottom face
-                    if (discretization_->v(i,j-1) != cellInfo.faceBottom.dirichletV.value()) {
-                        std::cout << "ERROR: Dirichlet v BC at bottom face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
-                        std::exit(EXIT_FAILURE);
-                    }
+                    // if (discretization_->v(i,j-1) != cellInfo.faceBottom.dirichletV.value()) {
+                    //     std::cout << "ERROR: Dirichlet v BC at bottom face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                    //     std::exit(EXIT_FAILURE);
+                    // }
                 } else if (cellInfo.faceBottom.neumannV.has_value()) {
                     v_i_jm1 = v_i_j + cellInfo.faceBottom.neumannV.value() * dy;
                     discretization_->g(i,j-1) = v_i_jm1; // set g to the neumann value

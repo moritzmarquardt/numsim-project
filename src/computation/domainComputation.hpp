@@ -89,10 +89,18 @@ class DomainComputation : public Computation {
         std::vector<CellInfo> fluidCellsInfoList_;
         std::vector<double> sendBufferTopU_;
         std::vector<double> sendBufferTopV_;
+        std::vector<double> recvBufferTopU_;
+        std::vector<double> recvBufferTopV_;
         std::vector<double> sendBufferBottomU_;
         std::vector<double> sendBufferBottomV_;
+        std::vector<double> recvBufferBottomU_;
+        std::vector<double> recvBufferBottomV_;
         std::vector<double> sendBufferLeftU_;
         std::vector<double> sendBufferLeftV_;
+        std::vector<double> recvBufferLeftU_;
+        std::vector<double> recvBufferLeftV_;
         std::vector<double> sendBufferRightU_;
         std::vector<double> sendBufferRightV_;
+        std::vector<double> recvBufferRightU_;
+        std::vector<double> recvBufferRightV_;
 };
