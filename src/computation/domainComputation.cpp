@@ -212,7 +212,7 @@ void DomainComputation::runSimulation() {
         currentTime += dt_;
         iterationCount++;
 
-        printProgress(currentTime, iterationCount);
+        // printProgress(currentTime, iterationCount);
 
         // this was the fix!!!
         // if (currentTime >= nOutputs) {
@@ -222,7 +222,7 @@ void DomainComputation::runSimulation() {
         communicateGhostCells();
 
         outputWriterParaview_->writeFile(currentTime);
-        outputWriterText_->writeFile(currentTime);
+        // outputWriterText_->writeFile(currentTime);
     }
 }
 
