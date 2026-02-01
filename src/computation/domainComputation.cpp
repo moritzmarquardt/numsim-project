@@ -545,94 +545,96 @@ void DomainComputation::computePreliminaryVelocities() {
         bool calcA = !(j == 1); // corresponds to f; is false if the cell is a ghost cell below the partition bc then only g is calculated
         bool calcB = !(i == 1); // correspomds to g; is false if the cell is a ghost cell left of the partition bc then only f is calculated
 
-            
-        if (cellInfo.faceRight.isBoundaryFace()) {
-            if (cellInfo.faceRight.dirichletU.has_value()) {
-                discretization_->f(i,j) = cellInfo.faceRight.dirichletU.value();
-                calcA = false;
-            } else if (cellInfo.faceRight.neumannU.has_value()) {
-                if (cellInfo.faceLeft.neumannU.has_value()) {
-                    std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
-                    std::exit(EXIT_FAILURE);
-                } else {
-                    discretization_->f(i,j) = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
-                    calcA = false;       
+        if (cellInfo.hasAnyBoundaryFace()) {
+            if (cellInfo.faceRight.isBoundaryFace()) {
+                if (cellInfo.faceRight.dirichletU.has_value()) {
+                    discretization_->f(i,j) = cellInfo.faceRight.dirichletU.value();
+                    calcA = false;
+                } else if (cellInfo.faceRight.neumannU.has_value()) {
+                    if (cellInfo.faceLeft.neumannU.has_value()) {
+                        std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
+                        std::exit(EXIT_FAILURE);
+                    } else {
+                        discretization_->f(i,j) = u_im1_j + cellInfo.faceRight.neumannU.value() * dx;
+                        calcA = false;       
+                    }
+                }
+                if (cellInfo.faceRight.dirichletV.has_value()) {
+                    v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
+                }  else if (cellInfo.faceRight.neumannV.has_value()) {
+                    v_ip1_j = v_i_j + cellInfo.faceRight.neumannV.value() * dx;
                 }
             }
-            if (cellInfo.faceRight.dirichletV.has_value()) {
-                v_ip1_j = 2 * cellInfo.faceRight.dirichletV.value() - v_i_j;
-            }  else if (cellInfo.faceRight.neumannV.has_value()) {
-                v_ip1_j = v_i_j + cellInfo.faceRight.neumannV.value() * dx;
-            }
-        }
 
-        if (cellInfo.faceTop.isBoundaryFace()) {
-            if (cellInfo.faceTop.dirichletV.has_value()) {
-                discretization_->g(i,j) = cellInfo.faceTop.dirichletV.value();
-                calcB = false;
-            } else if (cellInfo.faceTop.neumannV.has_value()) {
-                if (cellInfo.faceBottom.neumannV.has_value()) {
-                    std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
-                    std::exit(EXIT_FAILURE);
-                } else {
-                    discretization_->g(i,j) = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
+            if (cellInfo.faceTop.isBoundaryFace()) {
+                if (cellInfo.faceTop.dirichletV.has_value()) {
+                    discretization_->g(i,j) = cellInfo.faceTop.dirichletV.value();
                     calcB = false;
+                } else if (cellInfo.faceTop.neumannV.has_value()) {
+                    if (cellInfo.faceBottom.neumannV.has_value()) {
+                        std::cout << "ERROR: Neumann BCs on both sides of the cell at (" << i << ", " << j << ")" << std::endl;
+                        std::exit(EXIT_FAILURE);
+                    } else {
+                        discretization_->g(i,j) = v_i_jm1 + cellInfo.faceTop.neumannV.value() * dy;
+                        calcB = false;
+                    }
+                }
+                if (cellInfo.faceTop.dirichletU.has_value()) {
+                    u_i_jp1 = 2.0 * cellInfo.faceTop.dirichletU.value() - u_i_j;
+                }  else if (cellInfo.faceTop.neumannU.has_value()) {
+                    u_i_jp1 = u_i_j + cellInfo.faceTop.neumannU.value() * dy;
                 }
             }
-            if (cellInfo.faceTop.dirichletU.has_value()) {
-                u_i_jp1 = 2.0 * cellInfo.faceTop.dirichletU.value() - u_i_j;
-            }  else if (cellInfo.faceTop.neumannU.has_value()) {
-                u_i_jp1 = u_i_j + cellInfo.faceTop.neumannU.value() * dy;
+                
+            if (cellInfo.faceLeft.isBoundaryFace()) {
+                if (cellInfo.faceLeft.dirichletU.has_value()) {
+                    // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet u at left face
+                    if (discretization_->u(i-1,j) != cellInfo.faceLeft.dirichletU.value()) {
+                        std::cout << "ERROR: Dirichlet u BC at left face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                        std::exit(EXIT_FAILURE);
+                    }
+                } else if (cellInfo.faceLeft.neumannU.has_value()) { 
+                    u_im1_j = u_i_j + cellInfo.faceLeft.neumannU.value() * dx;
+                    discretization_->f(i-1,j) = u_im1_j; // set f to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
+                } 
+                if (cellInfo.faceLeft.dirichletV.has_value()) {
+                    v_im1_j = 2.0 * cellInfo.faceLeft.dirichletV.value() - v_i_j;
+                    if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                        discretization_->g(i-1,j) = v_im1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet left means solid obstacle to the left)
+                    }
+                }  else if (cellInfo.faceLeft.neumannV.has_value()) {
+                    v_im1_j = v_i_j + cellInfo.faceLeft.neumannV.value() * dx;
+                    if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
+                        discretization_->g(i-1,j) = v_im1_j; // set g to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
+                    }
+                }
+            }
+            if (cellInfo.faceBottom.isBoundaryFace()) {
+                if (cellInfo.faceBottom.dirichletV.has_value()) {
+                    // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet v at bottom face
+                    if (discretization_->v(i,j-1) != cellInfo.faceBottom.dirichletV.value()) {
+                        std::cout << "ERROR: Dirichlet v BC at bottom face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
+                        std::exit(EXIT_FAILURE);
+                    }
+                } else if (cellInfo.faceBottom.neumannV.has_value()) {
+                    v_i_jm1 = v_i_j + cellInfo.faceBottom.neumannV.value() * dy;
+                    discretization_->g(i,j-1) = v_i_jm1; // set g to the neumann value
+                }
+                if (cellInfo.faceBottom.dirichletU.has_value()) {
+                    u_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletU.value() - u_i_j;
+                    if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                        discretization_->f(i,j-1) = u_i_jm1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet bottom means solid obstacle to the bottom)
+                    }
+                }  else if (cellInfo.faceBottom.neumannU.has_value()) {
+                    u_i_jm1 = u_i_j + cellInfo.faceBottom.neumannU.value() * dy;     
+                    if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
+                        discretization_->f(i,j-1) = u_i_jm1; // set f to the neumann value (corresponds to a solid cell bc neumann bottom means solid obstacle to the bottom)
+                    }
+                }
             }
         }
             
-        if (cellInfo.faceLeft.isBoundaryFace()) {
-            if (cellInfo.faceLeft.dirichletU.has_value()) {
-                // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet u at left face
-                if (discretization_->u(i-1,j) != cellInfo.faceLeft.dirichletU.value()) {
-                    std::cout << "ERROR: Dirichlet u BC at left face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
-                    std::exit(EXIT_FAILURE);
-                }
-            } else if (cellInfo.faceLeft.neumannU.has_value()) { 
-                u_im1_j = u_i_j + cellInfo.faceLeft.neumannU.value() * dx;
-                discretization_->f(i-1,j) = u_im1_j; // set f to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
-            } 
-            if (cellInfo.faceLeft.dirichletV.has_value()) {
-                v_im1_j = 2.0 * cellInfo.faceLeft.dirichletV.value() - v_i_j;
-                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
-                    discretization_->g(i-1,j) = v_im1_j; // set g to the dirichlet value (corresponds to a solid cell bc dirichlet left means solid obstacle to the left)
-                }
-            }  else if (cellInfo.faceLeft.neumannV.has_value()) {
-                v_im1_j = v_i_j + cellInfo.faceLeft.neumannV.value() * dx;
-                if (partitioning_->ownPartitionContainsLeftBoundary() && (i == 1)) {
-                    discretization_->g(i-1,j) = v_im1_j; // set g to the neumann value (corresponds to a solid cell bc neumann left means solid obstacle to the left)
-                }
-            }
-        }
-        if (cellInfo.faceBottom.isBoundaryFace()) {
-            if (cellInfo.faceBottom.dirichletV.has_value()) {
-                // we trust that applyInitialBoundaryValues has already set the ghost value for dirichlet v at bottom face
-                if (discretization_->v(i,j-1) != cellInfo.faceBottom.dirichletV.value()) {
-                    std::cout << "ERROR: Dirichlet v BC at bottom face of cell (" << i << ", " << j << ") not properly set in applyInitialBoundaryValues!" << std::endl;
-                    std::exit(EXIT_FAILURE);
-                }
-            } else if (cellInfo.faceBottom.neumannV.has_value()) {
-                v_i_jm1 = v_i_j + cellInfo.faceBottom.neumannV.value() * dy;
-                discretization_->g(i,j-1) = v_i_jm1; // set g to the neumann value
-            }
-            if (cellInfo.faceBottom.dirichletU.has_value()) {
-                u_i_jm1 = 2.0 * cellInfo.faceBottom.dirichletU.value() - u_i_j;
-                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
-                    discretization_->f(i,j-1) = u_i_jm1; // set f to the dirichlet value (corresponds to a solid cell bc dirichlet bottom means solid obstacle to the bottom)
-                }
-            }  else if (cellInfo.faceBottom.neumannU.has_value()) {
-                u_i_jm1 = u_i_j + cellInfo.faceBottom.neumannU.value() * dy;     
-                if (partitioning_->ownPartitionContainsBottomBoundary() && (j == 1)) {
-                    discretization_->f(i,j-1) = u_i_jm1; // set f to the neumann value (corresponds to a solid cell bc neumann bottom means solid obstacle to the bottom)
-                }
-            }
-            
-        }
+        
             
         if (calcA) {
             double A_ij = 1 / settings_.re * (computeD2uDx2(u_ip1_j, u_i_j, u_im1_j) + computeD2uDy2(u_i_jp1, u_i_j, u_i_jm1)) - computeDu2Dx(u_i_j, u_im1_j, u_ip1_j) - computeDuvDy(u_i_j, u_i_jp1, u_i_jm1, v_i_j, v_ip1_j, v_i_jm1, v_ip1_jm1) + settings_.g[0];
