@@ -187,7 +187,7 @@ void Domain::readDomainFile(const std::string& filename) {
                 const int j = nCellsY - 1 - rowCount;
                 for (int i = 0; i < nCellsX; ++i) {
                     const char marker = (i < static_cast<int>(line.size())) ? line[i] : '-';
-                    const double value = (marker == '#') ? 1.0 : 0.0;
+                    const double value = (marker == 'X') ? 1.0 : 0.0;
                     (*obstacleMaskGlobal_)(i, j) = value;
                 }
                 rowCount++;
