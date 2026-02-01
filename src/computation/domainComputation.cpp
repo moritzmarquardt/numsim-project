@@ -119,7 +119,7 @@ void DomainComputation::runSimulation() {
     applyInitialBoundaryValues();
     // std::cout << "current rank: " << partitioning_->ownRankNo() << " applied initial boundary values." << std::endl;
 
-    const int verbose_rank = 0; // rank to print debug info
+    const int verbose_rank = 2; // rank to print debug info
     // std::cout << "printing debug info for rank " << verbose_rank << std::endl;
 
     // MPI_Barrier(cartComm_);
@@ -171,12 +171,12 @@ void DomainComputation::runSimulation() {
 
         computePressure();
 
-        // MPI_Barrier(cartComm_);
-        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-        //     std::cout << "p after pressure solve:" << std::endl;
-        //     discretization_->p().printAsArray();
-        // }
-        // MPI_Barrier(cartComm_);
+        MPI_Barrier(cartComm_);
+        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
+            std::cout << "p after pressure solve:" << std::endl;
+            discretization_->p().printAsArray();
+        }
+        MPI_Barrier(cartComm_);
 
         computeVelocities();
 
@@ -331,7 +331,16 @@ void DomainComputation::communicateGhostCells() {
     const int TAG_U = 0;
     const int TAG_V = 1;
 
-    if (!partitioning_->ownPartitionContainsTopBoundary()) {
+    if (partitioning_->ownPartitionContainsTopBoundary()) {
+        // set corner cells at the top boundary
+        if (partitioning_->ownPartitionContainsLeftBoundary()) {
+            // set left top corner cell to average over both adjacent cells for visualization purposes
+            discretization_->u(iBegin, jEnd) = 0.5 * (discretization_->u(iBegin, jEnd - 1) + discretization_->u(iBegin + 1, jEnd));
+        } else if (partitioning_->ownPartitionContainsRightBoundary()) {
+            // set right top corner cell
+            discretization_->u(iEnd - 1, jEnd) = 0.5 * (discretization_->u(iEnd - 2, jEnd) + discretization_->u(iEnd - 1, jEnd - 1));
+        }
+    } else {
         // otherwise communicate with the top neighbour
         for (int i = iBegin; i <= iEnd; i++) {
             sendBufferTopU[i - iBegin] = discretization_->u(i,jEnd - 1);
@@ -345,7 +354,12 @@ void DomainComputation::communicateGhostCells() {
         MPI_Irecv(recvBufferTopV.data(), recvBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
     }
     
-    if (!partitioning_->ownPartitionContainsBottomBoundary()) {
+    if (partitioning_->ownPartitionContainsBottomBoundary()) {
+        if (partitioning_->ownPartitionContainsRightBoundary()) {
+            // set bottom right corner
+            discretization_->v(iEnd, jBegin) = 0.5 * (discretization_->v(iEnd, jBegin + 1) + discretization_->v(iEnd - 1, jBegin));
+        }
+    } else {
         for (int i = iBegin; i <= iEnd; i++) {
             sendBufferBottomU[i - iBegin] = discretization_->u(i,jBegin + 1);
             sendBufferBottomV[i - iBegin] = discretization_->v(i,jBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)

@@ -84,6 +84,9 @@ void DomainPressureSolver::communicateGhostValues() {
         for (int i = pIBegin; i <= pIEnd; i++) {
             discretization_->p(i, pJEnd + 1) = discretization_->p(i, pJEnd);
         }
+        // set corners with diagonal value
+        discretization_->p(pIBegin - 1, pJEnd + 1) = discretization_->p(pIBegin, pJEnd);  // top left corner
+        discretization_->p(pIEnd + 1, pJEnd + 1) = discretization_->p(pIEnd, pJEnd); // top right corner
     } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferTop[i - pIBegin] = discretization_->p(i, pJEnd);
@@ -98,6 +101,9 @@ void DomainPressureSolver::communicateGhostValues() {
         for (int i = pIBegin; i <= pIEnd; i++) {
             discretization_->p(i, pJBegin - 1) = discretization_->p(i, pJBegin);
         }
+        // set corners with diagonal value
+        discretization_->p(pIBegin - 1, pJBegin - 1) = discretization_->p(pIBegin, pJBegin);  // bottom left corner
+        discretization_->p(pIEnd + 1, pJBegin - 1) = discretization_->p(pIEnd, pJBegin); // bottom right corner
     } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
             sendBufferBottom[i - pIBegin] = discretization_->p(i, pJBegin);
@@ -138,6 +144,9 @@ void DomainPressureSolver::communicateGhostValues() {
             // set ghost cells
             discretization_->p(i, pJEnd + 1) = recvBufferTop[i - pIBegin];
         }
+        // set corners
+        discretization_->p(pIBegin - 1, pJEnd + 1) = discretization_->p(pIBegin, pJEnd + 1);  // top left corner
+        discretization_->p(pIEnd + 1, pJEnd + 1) = discretization_->p(pIEnd, pJEnd + 1); // top right corner
     }
 
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
@@ -146,6 +155,8 @@ void DomainPressureSolver::communicateGhostValues() {
             // set ghost cells
             discretization_->p(i, pJBegin - 1) = recvBufferBottom[i - pIBegin];
         }
+        discretization_->p(pIBegin - 1, pJBegin - 1) = discretization_->p(pIBegin, pJBegin - 1);  // bottom left corner
+        discretization_->p(pIEnd + 1, pJBegin - 1) = discretization_->p(pIEnd, pJBegin - 1); // bottom right corner
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
