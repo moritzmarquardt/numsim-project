@@ -40,6 +40,32 @@ void ParallelCG::solve() {
         }
     }
 
+    // check compatibility condition for Neumann Poisson problem and enforce zero-mean RHS
+    double bsum_local = 0.0;
+    long nfluid_local = 0;
+
+    for (int i = pIBegin; i <= pIEnd; i++) {
+        for (int j = pJBegin; j <= pJEnd; j++) {
+            bsum_local += discretization_->rhs(i,j);
+            nfluid_local++;
+        }
+    }
+
+    double bsum_global = 0.0;
+    long nfluid_global = 0;
+
+    MPI_Allreduce(&bsum_local, &bsum_global, 1, MPI_DOUBLE, MPI_SUM, cartComm_);
+    MPI_Allreduce(&nfluid_local, &nfluid_global, 1, MPI_LONG,   MPI_SUM, cartComm_);
+
+    const double bmean = bsum_global / static_cast<double>(nfluid_global);
+
+    // shift RHS so that its mean over all fluid cells is zero: sum(b) = 0
+    for (int i = pIBegin; i <= pIEnd; i++) {
+        for (int j = pJBegin; j <= pJEnd; j++) {
+            discretization_->rhs(i,j) -= bmean;
+        }
+    }
+
     // global sum of initial r^T z
     MPI_Request request_residual;
     MPI_Iallreduce(MPI_IN_PLACE, &residualOld2_, 1, MPI_DOUBLE, MPI_SUM, cartComm_, &request_residual);
