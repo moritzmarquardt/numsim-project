@@ -15,7 +15,7 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     meshWidth_[1] = settings_.physicalSize[1] / settings_.nCells[1];
 
     domain_ = std::make_shared<Domain>(&settings_, partitioning_);
-    domain_->readDomainFile(argv[2]);
+    domain_->readDomainFile(settings_.domainFilePath);
 
     // only print for rank 0
     if (partitioning_->ownRankNo() == 0) {
