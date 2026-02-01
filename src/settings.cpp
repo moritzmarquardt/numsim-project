@@ -105,7 +105,10 @@ void Settings::loadFromFile(std::string filename)
     }
     else if (parameterName == "dirichletRightY"){
       dirichletBcRight[1] = atof(value.c_str());
-    }
+    } 
+    else if (parameterName == "domainFilePath"){
+      domainFilePath = value;
+    } 
     else if (parameterName == "nCellsX"){
       nCells[0] = atoi(value.c_str());
     }

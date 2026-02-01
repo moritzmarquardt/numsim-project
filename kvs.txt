@@ -9,7 +9,7 @@ re = 1000
 gX = 0.0              # external forces, set to (gX,gY) = (0,-9.81) to account for gravity
 gY = 0.0
 
-# Dirichlet boundary conditions
+# Dirichlet boundary conditions only for not domain computation
 dirichletBottomX = 0
 dirichletBottomY = 0
 dirichletTopX    = 0
@@ -18,6 +18,9 @@ dirichletLeftX   = 0
 dirichletLeftY   = 0
 dirichletRightX  = 0
 dirichletRightY  = 0
+
+# only for domain computation (file path from the executable POV)
+domainFilePath = ../kvs.domain
 
 # Discretization parameters
 nCellsX = 60          # number of cells in x and y direction
