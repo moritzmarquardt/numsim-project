@@ -113,6 +113,26 @@ void DomainComputation::initialize(int argc, char *argv[]) {
 
     //Set cartComm_ member
     cartComm_ = partitioning_->getCartComm();
+
+    // store lists
+    fluidCellsInfoList_ = domain_->getInfoListFluid();
+    std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
+    fluidGhostCellsInfoList_ = fluidCellsInfoList_;
+    fluidGhostCellsInfoList_.insert(fluidGhostCellsInfoList_.end(), ghostCellsInfo.begin(), ghostCellsInfo.end());
+
+    const int iBegin = 1;
+    const int iEnd = discretization_->nCells()[0] + 2;
+    const int l = iEnd - iBegin + 1;
+
+    // buffers for sending and receiving data
+    sendBufferTopU_ = std::vector<double>(l, 0.0);
+    sendBufferTopV_ = std::vector<double>(l, 0.0);
+    sendBufferBottomU_ = std::vector<double>(l, 0.0);
+    sendBufferBottomV_ = std::vector<double>(l, 0.0);
+    sendBufferLeftU_ = std::vector<double>(l, 0.0);
+    sendBufferLeftV_ = std::vector<double>(l, 0.0);
+    sendBufferRightU_ = std::vector<double>(l, 0.0);
+    sendBufferRightV_ = std::vector<double>(l, 0.0);
 }
 
 void DomainComputation::runSimulation() {
@@ -171,12 +191,12 @@ void DomainComputation::runSimulation() {
 
         computePressure();
 
-        MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-            std::cout << "p after pressure solve:" << std::endl;
-            discretization_->p().printAsArray();
-        }
-        MPI_Barrier(cartComm_);
+        // MPI_Barrier(cartComm_);
+        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
+        //     std::cout << "p after pressure solve:" << std::endl;
+        //     discretization_->p().printAsArray();
+        // }
+        // MPI_Barrier(cartComm_);
 
         computeVelocities();
 
@@ -304,25 +324,6 @@ void DomainComputation::communicateGhostCells() {
     const int jEnd = discretization_->nCells()[1] + 2;
     const int l = iEnd - iBegin + 1;
 
-    // buffers for sending and receiving data
-    std::vector<double> sendBufferTopU(l, 0.0);
-    std::vector<double> sendBufferTopV(l, 0.0);
-    std::vector<double> sendBufferBottomU(l, 0.0);
-    std::vector<double> sendBufferBottomV(l, 0.0);
-    std::vector<double> sendBufferLeftU(l, 0.0);
-    std::vector<double> sendBufferLeftV(l, 0.0);
-    std::vector<double> sendBufferRightU(l, 0.0);
-    std::vector<double> sendBufferRightV(l, 0.0);
-
-    // buffors for receiving data
-    std::vector<double> recvBufferTopU(l, 0.0);
-    std::vector<double> recvBufferTopV(l, 0.0);
-    std::vector<double> recvBufferBottomU(l, 0.0);
-    std::vector<double> recvBufferBottomV(l, 0.0);
-    std::vector<double> recvBufferLeftU(l, 0.0);
-    std::vector<double> recvBufferLeftV(l, 0.0);
-    std::vector<double> recvBufferRightU(l, 0.0);
-    std::vector<double> recvBufferRightV(l, 0.0);
 
     MPI_Request requestsSendTopU, requestsSendTopV, requestsRecvTopU, requestsRecvTopV;
     MPI_Request requestsSendBottomU, requestsSendBottomV, requestsRecvBottomU, requestsRecvBottomV;
@@ -343,15 +344,15 @@ void DomainComputation::communicateGhostCells() {
     } else {
         // otherwise communicate with the top neighbour
         for (int i = iBegin; i <= iEnd; i++) {
-            sendBufferTopU[i - iBegin] = discretization_->u(i,jEnd - 1);
-            sendBufferTopV[i - iBegin] = discretization_->v(i,jEnd - 2);
+            sendBufferTopU_[i - iBegin] = discretization_->u(i,jEnd - 1);
+            sendBufferTopV_[i - iBegin] = discretization_->v(i,jEnd - 2);
         }
         // instantiate non-blocking sends and receives
-        MPI_Isend(sendBufferTopU.data(), sendBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsSendTopU);
-        MPI_Isend(sendBufferTopV.data(), sendBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsSendTopV);
+        MPI_Isend(sendBufferTopU_.data(), sendBufferTopU_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsSendTopU);
+        MPI_Isend(sendBufferTopV_.data(), sendBufferTopV_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsSendTopV);
 
-        MPI_Irecv(recvBufferTopU.data(), recvBufferTopU.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvTopU);
-        MPI_Irecv(recvBufferTopV.data(), recvBufferTopV.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
+        MPI_Irecv(sendBufferTopU_.data(), sendBufferTopU_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvTopU);
+        MPI_Irecv(sendBufferTopV_.data(), sendBufferTopV_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvTopV);
     }
     
     if (partitioning_->ownPartitionContainsBottomBoundary()) {
@@ -361,38 +362,38 @@ void DomainComputation::communicateGhostCells() {
         }
     } else {
         for (int i = iBegin; i <= iEnd; i++) {
-            sendBufferBottomU[i - iBegin] = discretization_->u(i,jBegin + 1);
-            sendBufferBottomV[i - iBegin] = discretization_->v(i,jBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
+            sendBufferBottomU_[i - iBegin] = discretization_->u(i,jBegin + 1);
+            sendBufferBottomV_[i - iBegin] = discretization_->v(i,jBegin + 1); // +1 because we have two layers of gjost cells at the bottom (just like at the left)
         }
-        MPI_Isend(sendBufferBottomU.data(), sendBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsSendBottomU);
-        MPI_Isend(sendBufferBottomV.data(), sendBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsSendBottomV);
+        MPI_Isend(sendBufferBottomU_.data(), sendBufferBottomU_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsSendBottomU);
+        MPI_Isend(sendBufferBottomV_.data(), sendBufferBottomV_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsSendBottomV);
 
-        MPI_Irecv(recvBufferBottomU.data(), recvBufferBottomU.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvBottomU);
-        MPI_Irecv(recvBufferBottomV.data(), recvBufferBottomV.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvBottomV);
+        MPI_Irecv(sendBufferBottomU_.data(), sendBufferBottomU_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvBottomU);
+        MPI_Irecv(sendBufferBottomV_.data(), sendBufferBottomV_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvBottomV);
     }
 
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
         for (int j = jBegin; j <= jEnd; j++) {
-            sendBufferLeftU[j - jBegin] = discretization_->u(iBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
-            sendBufferLeftV[j - jBegin] = discretization_->v(iBegin + 1,j);
+            sendBufferLeftU_[j - jBegin] = discretization_->u(iBegin + 1,j); // +1 because we have two layers of ghost cells at the left (just like at the bottom)
+            sendBufferLeftV_[j - jBegin] = discretization_->v(iBegin + 1,j);
         }
-        MPI_Isend(sendBufferLeftU.data(), sendBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsSendLeftU);
-        MPI_Isend(sendBufferLeftV.data(), sendBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsSendLeftV);
+        MPI_Isend(sendBufferLeftU_.data(), sendBufferLeftU_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsSendLeftU);
+        MPI_Isend(sendBufferLeftV_.data(), sendBufferLeftV_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsSendLeftV);
         
-        MPI_Irecv(recvBufferLeftU.data(), recvBufferLeftU.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvLeftU);
-        MPI_Irecv(recvBufferLeftV.data(), recvBufferLeftV.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvLeftV);
+        MPI_Irecv(sendBufferLeftU_.data(), sendBufferLeftU_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvLeftU);
+        MPI_Irecv(sendBufferLeftV_.data(), sendBufferLeftV_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvLeftV);
     }
 
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
         for (int j = jBegin; j <= jEnd; j++) {
-            sendBufferRightU[j - jBegin] = discretization_->u(iEnd - 2,j);
-            sendBufferRightV[j - jBegin] = discretization_->v(iEnd - 1,j);
+            sendBufferRightU_[j - jBegin] = discretization_->u(iEnd - 2,j);
+            sendBufferRightV_[j - jBegin] = discretization_->v(iEnd - 1,j);
         }
-        MPI_Isend(sendBufferRightU.data(), sendBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsSendRightU);
-        MPI_Isend(sendBufferRightV.data(), sendBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsSendRightV);
+        MPI_Isend(sendBufferRightU_.data(), sendBufferRightU_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsSendRightU);
+        MPI_Isend(sendBufferRightV_.data(), sendBufferRightV_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsSendRightV);
 
-        MPI_Irecv(recvBufferRightU.data(), recvBufferRightU.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvRightU);
-        MPI_Irecv(recvBufferRightV.data(), recvBufferRightV.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvRightV);
+        MPI_Irecv(sendBufferRightU_.data(), sendBufferRightU_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_U, cartComm_, &requestsRecvRightU);
+        MPI_Irecv(sendBufferRightV_.data(), sendBufferRightV_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), TAG_V, cartComm_, &requestsRecvRightV);
     }
 
     // wait for all communications to finish and set ghost values
@@ -400,32 +401,32 @@ void DomainComputation::communicateGhostCells() {
         MPI_Wait(&requestsRecvTopU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvTopV, MPI_STATUS_IGNORE);
         for (int i = iBegin; i <= iEnd; i++) {
-            discretization_->u(i,jEnd) = recvBufferTopU[i - iBegin];
-            discretization_->v(i,jEnd) = recvBufferTopV[i - iBegin];
+            discretization_->u(i,jEnd) = sendBufferTopU_[i - iBegin];
+            discretization_->v(i,jEnd) = sendBufferTopV_[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsBottomBoundary()) {
         MPI_Wait(&requestsRecvBottomU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvBottomV, MPI_STATUS_IGNORE);
         for (int i = iBegin; i <= iEnd; i++) {
-            discretization_->u(i,jBegin) = recvBufferBottomU[i - iBegin];
-            discretization_->v(i,jBegin - 1) = recvBufferBottomV[i - iBegin];
+            discretization_->u(i,jBegin) = sendBufferBottomU_[i - iBegin];
+            discretization_->v(i,jBegin - 1) = sendBufferBottomV_[i - iBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsLeftBoundary()) {
         MPI_Wait(&requestsRecvLeftU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvLeftV, MPI_STATUS_IGNORE);
         for (int j = jBegin; j <= jEnd; j++) {
-            discretization_->u(iBegin - 1,j) = recvBufferLeftU[j - jBegin];
-            discretization_->v(iBegin,j) = recvBufferLeftV[j - jBegin];
+            discretization_->u(iBegin - 1,j) = sendBufferLeftU_[j - jBegin];
+            discretization_->v(iBegin,j) = sendBufferLeftV_[j - jBegin];
         }
     }
     if (!partitioning_->ownPartitionContainsRightBoundary()) {
         MPI_Wait(&requestsRecvRightU, MPI_STATUS_IGNORE);
         MPI_Wait(&requestsRecvRightV, MPI_STATUS_IGNORE);
         for (int j = jBegin; j <= jEnd; j++) {
-            discretization_->u(iEnd,j) = recvBufferRightU[j - jBegin];
-            discretization_->v(iEnd,j) = recvBufferRightV[j - jBegin];
+            discretization_->u(iEnd,j) = sendBufferRightU_[j - jBegin];
+            discretization_->v(iEnd,j) = sendBufferRightV_[j - jBegin];
         }
     }
 }
@@ -520,14 +521,11 @@ double DomainComputation::computeDuvDy(double u_i_j, double u_i_jp1, double u_i_
 
 
 void DomainComputation::computePreliminaryVelocities() {
-    std::vector<CellInfo> allCellsInfo = domain_->getInfoListFluid();
-    std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
-    allCellsInfo.insert(allCellsInfo.end(), ghostCellsInfo.begin(), ghostCellsInfo.end()); // add ghost cells, but make sure for these only the faces are calculated that are not ghost faces
-    int n = allCellsInfo.size();
+    int n = fluidGhostCellsInfoList_.size();
     double dx = discretization_->dx();
     double dy = discretization_->dy();
     for (int idx = 0; idx < n; idx++) {
-        CellInfo cellInfo = allCellsInfo[idx];
+        CellInfo cellInfo = fluidGhostCellsInfoList_[idx];
         const int i = cellInfo.cellIndexPartition[0];
         const int j = cellInfo.cellIndexPartition[1];
 
@@ -649,11 +647,10 @@ void DomainComputation::computePreliminaryVelocities() {
 }
 
 void DomainComputation::computeRightHandSide() {
-    std::vector<CellInfo> allCellsInfo = domain_->getInfoListFluid();
-    int n = allCellsInfo.size();
+    int n = fluidCellsInfoList_.size();
     double dx = discretization_->dx();
     for (int idx = 0; idx < n; idx++) {
-        CellInfo cellInfo = allCellsInfo[idx];
+        CellInfo cellInfo = fluidCellsInfoList_[idx];
         int i = cellInfo.cellIndexPartition[0];
         int j = cellInfo.cellIndexPartition[1];
 
@@ -669,12 +666,9 @@ void DomainComputation::computePressure() {
 
 void DomainComputation::computeVelocities() {
     // update velocities based on new pressure field
-    std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
-    std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
-    fluidCellsInfo.insert(fluidCellsInfo.end(), ghostCellsInfo.begin(), ghostCellsInfo.end()); // add ghost cells, but make sure for these only the faces are calculated that are not ghost faces
-    int n = fluidCellsInfo.size();
+    int n = fluidGhostCellsInfoList_.size();
     for (int idx = 0; idx < n; idx++) {
-        CellInfo cellInfo = fluidCellsInfo[idx];
+        CellInfo cellInfo = fluidGhostCellsInfoList_[idx];
         int i = cellInfo.cellIndexPartition[0];
         int j = cellInfo.cellIndexPartition[1];
 

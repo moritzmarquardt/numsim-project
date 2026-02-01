@@ -15,7 +15,16 @@ DomainCG::DomainCG(std::shared_ptr<Discretization> discretization, double epsilo
     w_(FieldVariable({partitioning_->nCellsLocal()[0] + 3,
         partitioning_->nCellsLocal()[1] + 3}, {-1.5 * discretization_->dx(), -1.5 * discretization_->dy()},
         discretization_->meshWidth()))
-    {}
+    {
+        const int pIBegin = discretization_->pIBegin();
+        const int pIEnd = discretization_->pIEnd();
+        const int pJBegin = discretization_->pJBegin();
+        const int pJEnd = discretization_->pJEnd();
+        sendBufferTopDirection_ = std::vector<double>(pIEnd - pIBegin + 1, 0.0);
+        sendBufferBottomDirection_ = std::vector<double>(pIEnd - pIBegin + 1, 0.0);
+        sendBufferLeftDirection_ = std::vector<double>(pJEnd - pJBegin + 1, 0.0);
+        sendBufferRightDirection_ = std::vector<double>(pJEnd - pJBegin + 1, 0.0);
+    }
 
 void DomainCG::solve() {
     const double eps_2 = epsilon_ * epsilon_;
@@ -175,7 +184,6 @@ void DomainCG::solve() {
         }
 
         // update solution p, residual r, and direction z in-place (use global alpha and beta)
-        std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
         for (const CellInfo& cellInfo : fluidCellsInfo) {
             int i = cellInfo.cellIndexPartition[0];
             int j = cellInfo.cellIndexPartition[1];
@@ -210,12 +218,6 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
     const int pJBegin = discretization_->pJBegin();
     const int pJEnd = discretization_->pJEnd();
 
-    // buffers for sending and receiving data
-    std::vector<double> sendBufferTop(pIEnd - pIBegin + 1, 0.0);
-    std::vector<double> sendBufferBottom(pIEnd - pIBegin + 1, 0.0);
-    std::vector<double> sendBufferLeft(pJEnd - pJBegin + 1, 0.0);
-    std::vector<double> sendBufferRight(pJEnd - pJBegin + 1, 0.0);
-
     // init MPI request variables
     MPI_Request requestTop, requestBottom, requestLeft, requestRight;
 
@@ -226,11 +228,11 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         }
     } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
-            sendBufferTop[i - pIBegin] = direction_(i, pJEnd);
+            sendBufferTopDirection_[i - pIBegin] = direction_(i, pJEnd);
         }
         // instantiate non-blocking sends and receives
-        MPI_Isend(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop);
-        MPI_Irecv(sendBufferTop.data(), sendBufferTop.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop); 
+        MPI_Isend(sendBufferTopDirection_.data(), sendBufferTopDirection_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop);
+        MPI_Irecv(sendBufferTopDirection_.data(), sendBufferTopDirection_.size(), MPI_DOUBLE, partitioning_->topNeighbourRankNo(), 0, cartComm_, &requestTop); 
         // override request top with the receive request. and it does not matter since we only wait for receives later (if a receive is not done yet, the send cannot be done either)
     }
 
@@ -240,10 +242,10 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         }
     } else {
         for (int i = pIBegin; i <= pIEnd; i++) {
-            sendBufferBottom[i - pIBegin] = direction_(i, pJBegin);
+            sendBufferBottomDirection_[i - pIBegin] = direction_(i, pJBegin);
         }
-        MPI_Isend(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
-        MPI_Irecv(sendBufferBottom.data(), sendBufferBottom.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
+        MPI_Isend(sendBufferBottomDirection_.data(), sendBufferBottomDirection_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
+        MPI_Irecv(sendBufferBottomDirection_.data(), sendBufferBottomDirection_.size(), MPI_DOUBLE, partitioning_->bottomNeighbourRankNo(), 0, cartComm_, &requestBottom);
     }
 
     if (partitioning_->ownPartitionContainsLeftBoundary()) {
@@ -252,10 +254,10 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         }
     } else {
         for (int j = pJBegin; j <= pJEnd; j++) {
-            sendBufferLeft[j - pJBegin] = direction_(pIBegin, j);
+            sendBufferLeftDirection_[j - pJBegin] = direction_(pIBegin, j);
         }
-        MPI_Isend(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
-        MPI_Irecv(sendBufferLeft.data(), sendBufferLeft.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
+        MPI_Isend(sendBufferLeftDirection_.data(), sendBufferLeftDirection_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
+        MPI_Irecv(sendBufferLeftDirection_.data(), sendBufferLeftDirection_.size(), MPI_DOUBLE, partitioning_->leftNeighbourRankNo(), 0, cartComm_, &requestLeft);
     }
 
     if (partitioning_->ownPartitionContainsRightBoundary()) {
@@ -264,10 +266,10 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         }
     } else {
         for (int j = pJBegin; j <= pJEnd; j++) {
-            sendBufferRight[j - pJBegin] = direction_(pIEnd, j);
+            sendBufferRightDirection_[j - pJBegin] = direction_(pIEnd, j);
         }
-        MPI_Isend(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
-        MPI_Irecv(sendBufferRight.data(), sendBufferRight.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
+        MPI_Isend(sendBufferRightDirection_.data(), sendBufferRightDirection_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
+        MPI_Irecv(sendBufferRightDirection_.data(), sendBufferRightDirection_.size(), MPI_DOUBLE, partitioning_->rightNeighbourRankNo(), 0, cartComm_, &requestRight);
     }
 
     // nachdem kommuniziert wurde setzren wir die ghost nodes mit den empfangenen werten für ränder die nicht am globalen rand liegen
@@ -276,7 +278,7 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         MPI_Wait(&requestTop, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            direction_(i, pJEnd + 1) = sendBufferTop[i - pIBegin];
+            direction_(i, pJEnd + 1) = sendBufferTopDirection_[i - pIBegin];
         }
     }
 
@@ -284,7 +286,7 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         MPI_Wait(&requestBottom, MPI_STATUS_IGNORE);  // Wait for receive
         for (int i = pIBegin; i <= pIEnd; i++) {
             // set ghost cells
-            direction_(i, pJBegin - 1) = sendBufferBottom[i - pIBegin];
+            direction_(i, pJBegin - 1) = sendBufferBottomDirection_[i - pIBegin];
         }
     }
 
@@ -292,7 +294,7 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         MPI_Wait(&requestLeft, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            direction_(pIBegin - 1, j) = sendBufferLeft[j - pJBegin];
+            direction_(pIBegin - 1, j) = sendBufferLeftDirection_[j - pJBegin];
         }
     }
 
@@ -300,7 +302,7 @@ void DomainCG::communicateAndSetBoundaryValuesForDirection() {
         MPI_Wait(&requestRight, MPI_STATUS_IGNORE);  // Wait for receive
         for (int j = pJBegin; j <= pJEnd; j++) {
             // set ghost cells
-            direction_(pIEnd + 1, j) = sendBufferRight[j - pJBegin];
+            direction_(pIEnd + 1, j) = sendBufferRightDirection_[j - pJBegin];
         }
     }
 }

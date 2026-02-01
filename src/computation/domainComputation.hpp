@@ -85,4 +85,14 @@ class DomainComputation : public Computation {
         std::unique_ptr<OutputWriterTextParallel> outputWriterText_;
         MPI_Comm cartComm_;
         std::shared_ptr<Domain> domain_;
+        std::vector<CellInfo> fluidGhostCellsInfoList_;
+        std::vector<CellInfo> fluidCellsInfoList_;
+        std::vector<double> sendBufferTopU_;
+        std::vector<double> sendBufferTopV_;
+        std::vector<double> sendBufferBottomU_;
+        std::vector<double> sendBufferBottomV_;
+        std::vector<double> sendBufferLeftU_;
+        std::vector<double> sendBufferLeftV_;
+        std::vector<double> sendBufferRightU_;
+        std::vector<double> sendBufferRightV_;
 };

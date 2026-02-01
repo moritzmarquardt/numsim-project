@@ -27,4 +27,9 @@ private:
     double dx2_;
     double dy2_;
 
+    std::vector<double> sendBufferTopDirection_;
+    std::vector<double> sendBufferBottomDirection_;
+    std::vector<double> sendBufferLeftDirection_;
+    std::vector<double> sendBufferRightDirection_;
+
 };
