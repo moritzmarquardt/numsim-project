@@ -11,9 +11,17 @@ Domain::Domain(const Settings* settings, std::shared_ptr<Partitioning> partition
 }
 
 void Domain::readDomainFile(const std::string& filename) {
-    std::ifstream file(filename);
+    std::string settingsFilePath = settings_->settingsFilePath;
+    std::string domainFilePath;
+    size_t lastSlash = settingsFilePath.find_last_of("/\\");
+    if (lastSlash != std::string::npos) {
+        domainFilePath = settingsFilePath.substr(0, lastSlash + 1) + filename;
+    } else {
+        domainFilePath = filename;
+    }
+    std::ifstream file(domainFilePath);
     if (!file.is_open()) {
-        std::cerr << "Error: Could not open domain file: " << filename << std::endl;
+        std::cerr << "Error: Could not open domain file: " << domainFilePath << std::endl;
         return;
     }
 

@@ -20,6 +20,8 @@ void Settings::loadFromFile(std::string filename)
     return;
   }
 
+  settingsFilePath = filename;
+
   // go through all the lines in the txt file
   for (int lineNo = 0;; lineNo++)
   {
