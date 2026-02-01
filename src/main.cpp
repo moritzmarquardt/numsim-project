@@ -13,8 +13,8 @@ int main(int argc, char *argv[])
   MPI_Init(&argc, &argv);
   int rank;
     
-  // DomainComputation computation;
-  ParallelComputation computation;
+  DomainComputation computation;
+  // ParallelComputation computation;
   computation.initialize(argc, argv);
 
   rank = computation.getRankNo();
