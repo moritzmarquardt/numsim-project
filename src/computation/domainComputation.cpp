@@ -27,31 +27,29 @@ void DomainComputation::initialize(int argc, char *argv[]) {
         int nCellsX = settings_.nCells[0];
         int nCellsY = settings_.nCells[1];
         std::cout << "Obstacle Mask:" << std::endl;
-        obstacleMask.prettyPrintArray2D();
+        obstacleMask.printArray2D();
         std::cout << "Right Faces BC:" << std::endl;
-        rightFacesBC.prettyPrintArray2D();
-        std::cout << "Top Faces BC:" << std::endl;
-        topFacesBC.prettyPrintArray2D();
-
-
-        // print the maps of the domain
+        rightFacesBC.printArray2D();
         std::cout << "Right Face BC Info Map:" << std::endl;
         for (const auto& pair : domain_->rightFaceBCInfoMap()) {
             std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
         }
+
+        std::cout << "Top Faces BC:" << std::endl;
+        topFacesBC.printArray2D();
         std::cout << "Top Face BC Info Map:" << std::endl;
         for (const auto& pair : domain_->topFaceBCInfoMap()) {
             std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
         }   
         // print char to code maps
-        std::cout << "Right Face Marker Map:" << std::endl;
-        for (const auto& pair : domain_->rightFaceMarkerMap()) {
-            std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
-        }
-        std::cout << "Top Face Marker Map:" << std::endl;
-        for (const auto& pair : domain_->topFaceMarkerMap()) {
-            std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
-        }
+        // std::cout << "Right Face Marker Map:" << std::endl;
+        // for (const auto& pair : domain_->rightFaceMarkerMap()) {
+        //     std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
+        // }
+        // std::cout << "Top Face Marker Map:" << std::endl;
+        // for (const auto& pair : domain_->topFaceMarkerMap()) {
+        //     std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
+        // }
 
         // print lists of cells
         // std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
@@ -91,6 +89,7 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     // create discretization
     if (settings_.useDonorCell) {
         discretization_ = std::make_shared<DonorCell>(nCellsLocal, meshWidth_, settings_.alpha, partitioning_);
+        if (partitioning_->ownRankNo() == 0) {std::cout << "Using DonorCell: true (alpha = " << settings_.alpha << ")" << std::endl;}
     } else {
         std::cout << "ERROR : Only DonorCell discretization is implemented for domain decomposition!" << std::endl;
     }
@@ -99,8 +98,10 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     // TODO
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<DomainRBGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
+        if (partitioning_->ownRankNo() == 0) {std::cout << "Using Pressure Solver: DomainRBGaussSeidel" << std::endl;}
     } else if (settings_.pressureSolver == "CG") {
         pressureSolver_ =  std::make_unique<DomainCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
+        if (partitioning_->ownRankNo() == 0) {std::cout << "Using Pressure Solver: DomainCG" << std::endl;}
     } else {
         std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
         std::exit(EXIT_FAILURE);
@@ -116,19 +117,19 @@ void DomainComputation::initialize(int argc, char *argv[]) {
 
 void DomainComputation::runSimulation() {
     applyInitialBoundaryValues();
-    std::cout << "current rank: " << partitioning_->ownRankNo() << " applied initial boundary values." << std::endl;
+    // std::cout << "current rank: " << partitioning_->ownRankNo() << " applied initial boundary values." << std::endl;
 
     const int verbose_rank = 0; // rank to print debug info
-    std::cout << "printing debug info for rank " << verbose_rank << std::endl;
+    // std::cout << "printing debug info for rank " << verbose_rank << std::endl;
 
-    MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank) {
-            std::cout << "u after initial boundary values:" << std::endl;
-            discretization_->u().printAsArray();
-            std::cout << "v after initial boundary values:" << std::endl;
-            discretization_->v().printAsArray();
-        }
-    MPI_Barrier(cartComm_);
+    // MPI_Barrier(cartComm_);
+    //     if (partitioning_->ownRankNo() == verbose_rank) {
+    //         std::cout << "u after initial boundary values:" << std::endl;
+    //         discretization_->u().printAsArray();
+    //         std::cout << "v after initial boundary values:" << std::endl;
+    //         discretization_->v().printAsArray();
+    //     }
+    // MPI_Barrier(cartComm_);
 
     double currentTime = 0.0;
     int iterationCount = 0;
@@ -137,14 +138,14 @@ void DomainComputation::runSimulation() {
     
     communicateGhostCells();
 
-    MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank) {
-            std::cout << "u after initial ghost cell communication:" << std::endl;
-            discretization_->u().printAsArray();
-            std::cout << "v after initial ghost cell communication:" << std::endl;
-            discretization_->v().printAsArray();
-        }
-    MPI_Barrier(cartComm_);
+    // MPI_Barrier(cartComm_);
+    //     if (partitioning_->ownRankNo() == verbose_rank) {
+    //         std::cout << "u after initial ghost cell communication:" << std::endl;
+    //         discretization_->u().printAsArray();
+    //         std::cout << "v after initial ghost cell communication:" << std::endl;
+    //         discretization_->v().printAsArray();
+    //     }
+    // MPI_Barrier(cartComm_);
 
     while (currentTime < settings_.endTime - time_eps) {
 
@@ -157,36 +158,36 @@ void DomainComputation::runSimulation() {
         computePreliminaryVelocities();
         computeRightHandSide();
 
-        MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-            std::cout << "f before pressure solve:" << std::endl;
-            discretization_->f().printAsArray();
-            std::cout << "g before pressure solve:" << std::endl;
-            discretization_->g().printAsArray();
-            std::cout << "p before pressure solve:" << std::endl;
-            discretization_->p().printAsArray();
-        }
-        MPI_Barrier(cartComm_);
+        // MPI_Barrier(cartComm_);
+        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
+        //     std::cout << "f before pressure solve:" << std::endl;
+        //     discretization_->f().printAsArray();
+        //     std::cout << "g before pressure solve:" << std::endl;
+        //     discretization_->g().printAsArray();
+        //     std::cout << "p before pressure solve:" << std::endl;
+        //     discretization_->p().printAsArray();
+        // }
+        // MPI_Barrier(cartComm_);
 
         computePressure();
 
-        MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-            std::cout << "p after pressure solve:" << std::endl;
-            discretization_->p().printAsArray();
-        }
-        MPI_Barrier(cartComm_);
+        // MPI_Barrier(cartComm_);
+        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
+        //     std::cout << "p after pressure solve:" << std::endl;
+        //     discretization_->p().printAsArray();
+        // }
+        // MPI_Barrier(cartComm_);
 
         computeVelocities();
 
-        MPI_Barrier(cartComm_);
-        if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-            std::cout << "u after calculating u:" << std::endl;
-            discretization_->u().printAsArray();
-            std::cout << "v after calculating v:" << std::endl;
-            discretization_->v().printAsArray();
-        }
-        MPI_Barrier(cartComm_);
+        // MPI_Barrier(cartComm_);
+        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
+        //     std::cout << "u after calculating u:" << std::endl;
+        //     discretization_->u().printAsArray();
+        //     std::cout << "v after calculating v:" << std::endl;
+        //     discretization_->v().printAsArray();
+        // }
+        // MPI_Barrier(cartComm_);
 
         currentTime += dt_;
         iterationCount++;
@@ -230,6 +231,10 @@ void DomainComputation::printProgress(double &currentTime, int &iterationCount)
 
             std::cout << "\rProgress: " << progressBar << " " << percent << "% | Time: " << currentTime
                       << "/" << settings_.endTime << " | Iter: " << iterationCount << std::flush;
+            if (currentTime >= settings_.endTime)
+            {
+                std::cout << std::endl;
+            }
         }
     }
 }

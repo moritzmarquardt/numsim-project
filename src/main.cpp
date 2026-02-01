@@ -24,6 +24,10 @@ int main(int argc, char *argv[])
   double endTime = MPI_Wtime();
 
   MPI_Finalize();
+  if (rank == 0)
+  {
+    std::cout << "Total execution time: " << endTime - startTime << " seconds." << std::endl;
+  }
 
   return EXIT_SUCCESS;
 }
