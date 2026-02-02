@@ -20,7 +20,7 @@ dirichletRightX  = 0
 dirichletRightY  = 0
 
 # only for domain computation (file path from the executable POV)
-domainFilePath = littleWing.domain
+domainFilePath = hugeWing4.domain
 
 # Discretization parameters
 nCellsX = 1200         # number of cells in x and y direction
