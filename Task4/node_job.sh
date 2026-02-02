@@ -24,5 +24,5 @@ NODE_LIST=(1 2 4 6 8 10 12 14 16 18 20 22 24 48)
 
 for R in "${NODE_LIST[@]}"; do
     echo "Running with $R MPI ranks on 1 node..."
-    srun -N 1 -n $R --ntasks-per-node=$R --cpu-bind=cores ../build/numsim_parallel ../parameterFiles/bigldc.txt
+    srun -N 1 -n $R --ntasks-per-node=$R --cpu-bind=cores ../build/numsim_parallel ../Task4/scenarios/bigldc.txt
 done
