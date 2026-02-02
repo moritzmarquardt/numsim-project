@@ -18,8 +18,11 @@ void DomainComputation::initialize(int argc, char *argv[]) {
     domain_->readDomainFile(settings_.domainFilePath);
 
     // only print for rank 0
-    if (partitioning_->ownRankNo() == 0) {
-
+    int verbose = 1;
+    if (partitioning_->ownRankNo() == 0 && verbose == 1) {
+        settings_.printSettings();
+    }
+    if (partitioning_->ownRankNo() == 0 && verbose == 2) {
         // pretty print array2d of domain: the right and top faces array and the obstacle array
         Array2D& obstacleMask = *(domain_->obstacleMaskGlobal_);
         Array2D& rightFacesBC = *(domain_->rightFacesBCGlobal_);
@@ -34,76 +37,28 @@ void DomainComputation::initialize(int argc, char *argv[]) {
         for (const auto& pair : domain_->rightFaceBCInfoMap()) {
             std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
         }
-
         std::cout << "Top Faces BC:" << std::endl;
         topFacesBC.printArray2D();
         std::cout << "Top Face BC Info Map:" << std::endl;
         for (const auto& pair : domain_->topFaceBCInfoMap()) {
             std::cout << "Code: " << pair.first << ", Info: " << pair.second.toString() << std::endl;
-        }   
-        // print char to code maps
-        // std::cout << "Right Face Marker Map:" << std::endl;
-        // for (const auto& pair : domain_->rightFaceMarkerMap()) {
-        //     std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
-        // }
-        // std::cout << "Top Face Marker Map:" << std::endl;
-        // for (const auto& pair : domain_->topFaceMarkerMap()) {
-        //     std::cout << "Code: " << pair.first << ", Marker: " << pair.second << std::endl;
-        // }
-
-        // print lists of cells
-        // std::vector<CellInfo> allCellsInfo = domain_->getInfoListAll();
-        // std::cout << "All Cells Info List:" << std::endl;
-        // for (const auto& cellInfo : allCellsInfo) {
-        //     std::cout << cellInfo.toString() << std::endl; 
-        // }
-        // std::vector<CellInfo> fluidCellsInfo = domain_->getInfoListFluid();
-        // std::cout << "Fluid Cells Info List:" << std::endl;
-        // for (const auto& cellInfo : fluidCellsInfo) {
-        //     std::cout << cellInfo.toString() << std::endl;
-        // }
-        // std::vector<CellInfo> redCellsInfo = domain_->getRedListFluid();
-        // std::cout << "Red Fluid Cells Info List:" << std::endl;
-        // for (const auto& cellInfo : redCellsInfo) {
-        //     std::cout << cellInfo.toString() << std::endl;
-        // }
-
-        // std::vector<CellInfo> blackCellsInfo = domain_->getBlackListFluid();
-        // std::cout << "Black Fluid Cells Info List:" << std::endl;
-        // for (const auto& cellInfo : blackCellsInfo) {
-        //     std::cout << cellInfo.toString() << std::endl;
-        // }
-
-        // std::cout << "Ghost Cells Info List:" << std::endl;
-        // std::vector<CellInfo> ghostCellsInfo = domain_->getGhostList();
-        // std::cout << "Ghost Cells Info List length: " << ghostCellsInfo.size() << std::endl;
-        // for (const auto& cellInfo : ghostCellsInfo) {
-        //     std::cout << cellInfo.toString() << std::endl;
-        // }
-
+        } 
     }
-
-
-
 
     // create discretization
     if (settings_.useDonorCell) {
         discretization_ = std::make_shared<DonorCell>(nCellsLocal, meshWidth_, settings_.alpha, partitioning_);
-        if (partitioning_->ownRankNo() == 0) {std::cout << "Using DonorCell: true (alpha = " << settings_.alpha << ")" << std::endl;}
     } else {
         std::cout << "ERROR : Only DonorCell discretization is implemented for domain decomposition!" << std::endl;
     }
 
     // create pressure solver
-    // TODO
     if (settings_.pressureSolver == "GaussSeidel") {
         pressureSolver_ = std::make_unique<DomainRBGaussSeidel>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
-        if (partitioning_->ownRankNo() == 0) {std::cout << "Using Pressure Solver: DomainRBGaussSeidel" << std::endl;}
     } else if (settings_.pressureSolver == "CG") {
         pressureSolver_ =  std::make_unique<DomainCG>(discretization_, settings_.epsilon, settings_.maximumNumberOfIterations, partitioning_, domain_);
-        if (partitioning_->ownRankNo() == 0) {std::cout << "Using Pressure Solver: DomainCG" << std::endl;}
     } else {
-        std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << std::endl;
+        std::cerr << "Error: Unknown pressure solver: " << settings_.pressureSolver << "or not implemented for domain case" << std::endl;
         std::exit(EXIT_FAILURE);
     }
 
@@ -148,19 +103,8 @@ void DomainComputation::initialize(int argc, char *argv[]) {
 
 void DomainComputation::runSimulation() {
     applyInitialBoundaryValues();
-    // std::cout << "current rank: " << partitioning_->ownRankNo() << " applied initial boundary values." << std::endl;
 
     const int verbose_rank = 2; // rank to print debug info
-    // std::cout << "printing debug info for rank " << verbose_rank << std::endl;
-
-    // MPI_Barrier(cartComm_);
-    //     if (partitioning_->ownRankNo() == verbose_rank) {
-    //         std::cout << "u after initial boundary values:" << std::endl;
-    //         discretization_->u().printAsArray();
-    //         std::cout << "v after initial boundary values:" << std::endl;
-    //         discretization_->v().printAsArray();
-    //     }
-    // MPI_Barrier(cartComm_);
 
     double currentTime = 0.0;
     int iterationCount = 0;
@@ -168,15 +112,6 @@ void DomainComputation::runSimulation() {
     int nOutputs = 1;
     
     communicateGhostCells();
-
-    // MPI_Barrier(cartComm_);
-    //     if (partitioning_->ownRankNo() == verbose_rank) {
-    //         std::cout << "u after initial ghost cell communication:" << std::endl;
-    //         discretization_->u().printAsArray();
-    //         std::cout << "v after initial ghost cell communication:" << std::endl;
-    //         discretization_->v().printAsArray();
-    //     }
-    // MPI_Barrier(cartComm_);
 
     while (currentTime < settings_.endTime - time_eps) {
 
@@ -188,55 +123,22 @@ void DomainComputation::runSimulation() {
         
         computePreliminaryVelocities();
         computeRightHandSide();
-
-        // MPI_Barrier(cartComm_);
-        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-        //     std::cout << "f before pressure solve:" << std::endl;
-        //     discretization_->f().printAsArray();
-        //     std::cout << "g before pressure solve:" << std::endl;
-        //     discretization_->g().printAsArray();
-        //     std::cout << "p before pressure solve:" << std::endl;
-        //     discretization_->p().printAsArray();
-        // }
-        // MPI_Barrier(cartComm_);
-
         computePressure();
-
-        // MPI_Barrier(cartComm_);
-        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-        //     std::cout << "p after pressure solve:" << std::endl;
-        //     discretization_->p().printAsArray();
-        // }
-        // MPI_Barrier(cartComm_);
-
         computeVelocities();
-
-        // MPI_Barrier(cartComm_);
-        // if (partitioning_->ownRankNo() == verbose_rank && iterationCount < 2) {
-        //     std::cout << "u after calculating u:" << std::endl;
-        //     discretization_->u().printAsArray();
-        //     std::cout << "v after calculating v:" << std::endl;
-        //     discretization_->v().printAsArray();
-        // }
-        // MPI_Barrier(cartComm_);
 
         currentTime += dt_;
         iterationCount++;
 
         printProgress(currentTime, iterationCount);
 
-        // this was the fix!!!
-        // if (currentTime >= nOutputs) {
-        //     outputWriterParaview_->writeFile(currentTime);
-        //     nOutputs = nOutputs + 1;
-        // }
         communicateGhostCells();
 
         // outputWriterParaview_->writeFile(currentTime);
         // outputWriterText_->writeFile(currentTime);
 
         // write paraview approx 30 timesteps per second
-        if (currentTime >= (nOutputs / 30.0)) {
+        double nperSecond = 30.0;
+        if (currentTime >= (nOutputs / nperSecond)) {
             outputWriterParaview_->writeFile(currentTime);
             nOutputs = nOutputs + 1;
         }

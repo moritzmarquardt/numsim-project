@@ -210,8 +210,3 @@ void DomainPressureSolver::zeroMeanPressure() {
         }
     }
 }
-
-void DomainPressureSolver::fixPressureValue(){
-    //TODO: implement
-    
-}

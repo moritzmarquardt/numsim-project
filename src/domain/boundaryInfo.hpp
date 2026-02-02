@@ -6,18 +6,28 @@ struct BoundaryInfo {
     std::optional<double> dirichletU = std::nullopt;
     std::optional<double> dirichletV = std::nullopt;
     std::optional<double> neumannU = std::nullopt; // derivatives of u in normal direction to the boundary face (always outward normal)
-    std::optional<double> neumannV = std::nullopt; // derivatives of v in normal direction to the boundary face
-    // only neumar or dirichlet conditions can be set for u and v on each face
-    bool isPartitionInnerFace = false; // true if this face is a partition boundary face inside the domain. false if it is a physical boundary face or inside the partition
+    std::optional<double> neumannV = std::nullopt; // derivatives of v in normal direction to the boundary face (always outward normal)
 
+    /**
+     * @brief Check if this boundary face has any boundary condition defined
+     * @return true if any boundary condition is defined, false otherwise
+     */
     bool isBoundaryFace() const {
         return dirichletU.has_value() || dirichletV.has_value() || neumannU.has_value() || neumannV.has_value();
     }
 
+    /**
+     * @brief Check if this boundary face has any boundary condition defined for the u component
+     * @return true if any boundary condition for u is defined, false otherwise
+     */
     bool hasUBC() const {
         return dirichletU.has_value() || neumannU.has_value();
     }
 
+    /**
+     * @brief Check if this boundary face has any boundary condition defined for the v component
+     * @return true if any boundary condition for v is defined, false otherwise
+     */
     bool hasVBC() const {
         return dirichletV.has_value() || neumannV.has_value();
     }

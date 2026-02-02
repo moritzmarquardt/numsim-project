@@ -9,19 +9,15 @@ struct CellInfo
     BoundaryInfo faceRight;
     BoundaryInfo faceBottom;
     BoundaryInfo faceLeft;
-    std::array<int, 2> cellIndexPartition;  //not the global one
+    std::array<int, 2> cellIndexPartition;  //not the global one, so the index inside the partition
     bool fluidCell = true; // true if fluid cell, false if obstacle cell
 
+    /**
+     * @brief Check if this cell has any boundary face defined
+     * @return true if any boundary face is defined, false otherwise
+     */
     bool hasAnyBoundaryFace() const {
         return faceTop.isBoundaryFace() || faceRight.isBoundaryFace() || faceBottom.isBoundaryFace() || faceLeft.isBoundaryFace();
-    }
-
-    /**
-     * for this cell u and f have to be computed
-     * do not calc u if there is a dirichlet condition on the right face
-     */
-    bool calcUF() const {
-        return faceRight.dirichletU.has_value() == false;
     }
 
     // implement a toString method for pretty printing
