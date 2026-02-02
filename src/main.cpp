@@ -14,14 +14,15 @@ int main(int argc, char *argv[])
   int rank = 0;
     
   DomainComputation computation;
-  std::cout << "Using Domain Computation" << std::endl;
   // ParallelComputation computation;
-  // std::cout << "Using Parallel Computation" << std::endl;
   // Computation computation;
-  // std::cout << "Using Serial Computation" << std::endl;
 
   computation.initialize(argc, argv);
-  rank = computation.getRankNo();
+  rank = computation.getRankNo(); // remove for serial computation
+  
+  if (rank == 0) { std::cout << "Using Domain Computation" << std::endl;}
+  // if (rank == 0) { std::cout << "Using Parallel Computation" << std::endl;}
+  // std::cout << "Using Serial Computation" << std::endl;
 
   double startTime = MPI_Wtime();
   computation.runSimulation();
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
 
   if (rank == 0) {
     std::cout << "Total execution time: " << endTime - startTime << " seconds." << std::endl;
-  }
+  } 
   MPI_Finalize();
 
   return EXIT_SUCCESS;
