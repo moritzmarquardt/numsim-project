@@ -122,25 +122,28 @@ void DomainComputation::initialize(int argc, char *argv[]) {
 
     const int iBegin = 1;
     const int iEnd = discretization_->nCells()[0] + 2;
-    const int l = iEnd - iBegin + 1;
+    const int jBegin = 1;
+    const int jEnd = discretization_->nCells()[1] + 2;
+    const int l_horizontal = iEnd - iBegin + 1;
+    const int l_vertical = jEnd - jBegin + 1;
 
     // buffers for sending and receiving data
-    sendBufferTopU_ = std::vector<double>(l, 0.0);
-    sendBufferTopV_ = std::vector<double>(l, 0.0);
-    recvBufferTopU_ = std::vector<double>(l, 0.0);
-    recvBufferTopV_ = std::vector<double>(l, 0.0);
-    sendBufferBottomU_ = std::vector<double>(l, 0.0);
-    sendBufferBottomV_ = std::vector<double>(l, 0.0);
-    recvBufferBottomU_ = std::vector<double>(l, 0.0);
-    recvBufferBottomV_ = std::vector<double>(l, 0.0);
-    sendBufferLeftU_ = std::vector<double>(l, 0.0);
-    sendBufferLeftV_ = std::vector<double>(l, 0.0);
-    recvBufferLeftU_ = std::vector<double>(l, 0.0);
-    recvBufferLeftV_ = std::vector<double>(l, 0.0);
-    sendBufferRightU_ = std::vector<double>(l, 0.0);
-    sendBufferRightV_ = std::vector<double>(l, 0.0);
-    recvBufferRightU_ = std::vector<double>(l, 0.0);
-    recvBufferRightV_ = std::vector<double>(l, 0.0);
+    sendBufferTopU_ = std::vector<double>(l_horizontal, 0.0);
+    sendBufferTopV_ = std::vector<double>(l_horizontal, 0.0);
+    recvBufferTopU_ = std::vector<double>(l_horizontal, 0.0);
+    recvBufferTopV_ = std::vector<double>(l_horizontal, 0.0);
+    sendBufferBottomU_ = std::vector<double>(l_horizontal, 0.0);
+    sendBufferBottomV_ = std::vector<double>(l_horizontal, 0.0);
+    recvBufferBottomU_ = std::vector<double>(l_horizontal, 0.0);
+    recvBufferBottomV_ = std::vector<double>(l_horizontal, 0.0);
+    sendBufferLeftU_ = std::vector<double>(l_vertical, 0.0);
+    sendBufferLeftV_ = std::vector<double>(l_vertical, 0.0);
+    recvBufferLeftU_ = std::vector<double>(l_vertical, 0.0);
+    recvBufferLeftV_ = std::vector<double>(l_vertical, 0.0);
+    sendBufferRightU_ = std::vector<double>(l_vertical, 0.0);
+    sendBufferRightV_ = std::vector<double>(l_vertical, 0.0);
+    recvBufferRightU_ = std::vector<double>(l_vertical, 0.0);
+    recvBufferRightV_ = std::vector<double>(l_vertical, 0.0);
 }
 
 void DomainComputation::runSimulation() {
@@ -220,7 +223,7 @@ void DomainComputation::runSimulation() {
         currentTime += dt_;
         iterationCount++;
 
-        // printProgress(currentTime, iterationCount);
+        printProgress(currentTime, iterationCount);
 
         // this was the fix!!!
         // if (currentTime >= nOutputs) {
@@ -330,7 +333,6 @@ void DomainComputation::communicateGhostCells() {
     const int iEnd = discretization_->nCells()[0] + 2;
     const int jBegin = 1;
     const int jEnd = discretization_->nCells()[1] + 2;
-    const int l = iEnd - iBegin + 1;
 
 
     MPI_Request requestsSendTopU, requestsSendTopV, requestsRecvTopU, requestsRecvTopV;

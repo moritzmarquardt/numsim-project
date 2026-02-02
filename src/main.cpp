@@ -23,11 +23,11 @@ int main(int argc, char *argv[])
   computation.runSimulation();
   double endTime = MPI_Wtime();
 
-  MPI_Finalize();
   if (rank == 0)
   {
     std::cout << "Total execution time: " << endTime - startTime << " seconds." << std::endl;
   }
+  MPI_Finalize();
 
   return EXIT_SUCCESS;
 }
