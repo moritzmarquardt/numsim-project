@@ -232,8 +232,15 @@ void DomainComputation::runSimulation() {
         // }
         communicateGhostCells();
 
-        outputWriterParaview_->writeFile(currentTime);
+        // outputWriterParaview_->writeFile(currentTime);
         // outputWriterText_->writeFile(currentTime);
+
+        // write paraview approx 30 timesteps per second
+        if (currentTime >= (nOutputs / 30.0)) {
+            outputWriterParaview_->writeFile(currentTime);
+            nOutputs = nOutputs + 1;
+        }
+        
     }
 }
 
