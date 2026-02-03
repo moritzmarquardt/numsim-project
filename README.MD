@@ -1,6 +1,10 @@
 # Numeric Simulation Project
 This is the repository for the numeric simulation project of the Numerical Simulation lecture at the University of Stuttgart. The project implements a 2D incompressible Navier-Stokes solver using the Finite Difference Method (FDM) with different solvers and parallelization techniques. 
 
+![Benchmark](Task4/scenarios/benchmark.png)
+See some demonstration videos in the Task4/scenarios/ folder.
+
+
 ## Project Structure
 - **Task 1:** Serial computation of the Navier Stokes solver. See more in `Task1/`.
 - **Task 2:** Parallel computation using MPI. See more in `Task2/`.
