@@ -31,6 +31,11 @@ The state of the code after each task submission can be found by switching to th
     - In the folder Task4/scenarios/ there are more scenarios to try out.
     - The .domain file with the geometry and boundary conditions is always specified in the scenario text file. This means only the scenario text file has to be given as input to the executable.
 
+### Visualization of results (paraview):
+- The output files are located in the out/ folder from where the code was run.
+- .vti files are stored 30 times per simulated second in that folder.
+- These files can be opened as a group with paraview for visualization.
+
 ## Workspace setup for WSL (follow docs of numsim lecture)
 - install g++ and gdp: ```sudo apt-get install build-essential gdb```
 - ```sudo apt install cmake```
