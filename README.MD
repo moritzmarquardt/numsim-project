@@ -11,6 +11,8 @@ See some demonstration videos in the Task4/scenarios/ folder.
 - **Task 3:** Predict the lid driven cavity flow by training a neural network on simulation data. See more in `Task3/`.
 - **Task 4 (final project):** Implementing generalised geometries and boundary conditions in parallel. See more in `Task4/`.
 
+The state of the code after each task submission can be found by switching to the respective git tag / release.
+
 ## Quick start to run the code for different tasks:
 - **Task 1:**
     - change ```main.cpp``` to use the computation.hpp class
