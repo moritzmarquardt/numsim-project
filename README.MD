@@ -42,8 +42,9 @@ endif()
 - use tool to visualize this graphically
 
 ## To run parallel code locally with mpirun:
-- use same convenience script
-- run ``` mpirun -n 4 ./numsim "../src/lid_driven_cavity.txt"``` from build/ folder to run with 4 processes
+- Task 1: change ```main.cpp``` to use the computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```./build/numsim_parallel lid_driven_cavity.txt``` 
+- Task 2: change ```main.cpp``` to use the parallel computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```mpirun -n 4 ./build/numsim_parallel lid_driven_cavity.txt``` to run with 4 processes
+- Task 4: change ```main.cpp``` to use the domain computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```mpirun -n 4 ./build/numsim_parallel Task4/scenarios/lid_driven_cavity.txt``` to run with 4 processes
 
 ## To run the code on the IPVS cluster:
 - to be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.

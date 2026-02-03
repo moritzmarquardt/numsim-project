@@ -1,5 +1,6 @@
 #include "computation/domainComputation.hpp"
 #include "computation/parallelComputation.hpp"
+#include "computation/computation.hpp"
 #include <iostream>
 
 #include <cstdlib>
@@ -9,24 +10,27 @@
 
 int main(int argc, char *argv[])
 {
-  // emasure time for parallel execution
   MPI_Init(&argc, &argv);
-  int rank;
+  int rank = 0;
     
   DomainComputation computation;
   // ParallelComputation computation;
-  computation.initialize(argc, argv);
+  // Computation computation;
 
-  rank = computation.getRankNo();
+  computation.initialize(argc, argv);
+  rank = computation.getRankNo(); // remove for serial computation
+  
+  if (rank == 0) { std::cout << "Using Domain Computation" << std::endl;}
+  // if (rank == 0) { std::cout << "Using Parallel Computation" << std::endl;}
+  // std::cout << "Using Serial Computation" << std::endl;
 
   double startTime = MPI_Wtime();
   computation.runSimulation();
   double endTime = MPI_Wtime();
 
-  if (rank == 0)
-  {
+  if (rank == 0) {
     std::cout << "Total execution time: " << endTime - startTime << " seconds." << std::endl;
-  }
+  } 
   MPI_Finalize();
 
   return EXIT_SUCCESS;

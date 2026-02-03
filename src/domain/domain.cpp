@@ -144,6 +144,14 @@ void Domain::readDomainFile(const std::string& filename) {
     const int obstacleRows = nCellsY;
     const int rightRows = nCellsY;
     const int topRows = nCellsY + 1;
+    
+    // Track actual dimensions read from file
+    int maxObstacleRows = 0;
+    int maxObstacleCols = 0;
+    int maxRightRows = 0;
+    int maxRightCols = 0;
+    int maxTopRows = 0;
+    int maxTopCols = 0;
 
     auto trimTrailingCarriageReturn = [](std::string &value) {
         if (!value.empty() && value.back() == '\r') {
@@ -184,6 +192,9 @@ void Domain::readDomainFile(const std::string& filename) {
                 if (rowCount >= obstacleRows) {
                     continue;
                 }
+                maxObstacleRows = std::max(maxObstacleRows, rowCount + 1);
+                maxObstacleCols = std::max(maxObstacleCols, static_cast<int>(line.size()));
+                
                 const int j = nCellsY - 1 - rowCount;
                 for (int i = 0; i < nCellsX; ++i) {
                     const char marker = (i < static_cast<int>(line.size())) ? line[i] : '-';
@@ -200,6 +211,9 @@ void Domain::readDomainFile(const std::string& filename) {
                 if (rowCount >= rightRows) {
                     continue;
                 }
+                maxRightRows = std::max(maxRightRows, rowCount + 1);
+                maxRightCols = std::max(maxRightCols, static_cast<int>(line.size()));
+                
                 const int j = nCellsY - 1 - rowCount;
                 for (int i = 0; i < nCellsX + 1; ++i) {
                     const char marker = (i < static_cast<int>(line.size())) ? line[i] : '-';
@@ -216,6 +230,9 @@ void Domain::readDomainFile(const std::string& filename) {
                 if (rowCount >= topRows) {
                     continue;
                 }
+                maxTopRows = std::max(maxTopRows, rowCount + 1);
+                maxTopCols = std::max(maxTopCols, static_cast<int>(line.size()));
+                
                 const int j = nCellsY - rowCount;
                 for (int i = 0; i < nCellsX; ++i) {
                     const char marker = (i < static_cast<int>(line.size())) ? line[i] : '-';
@@ -232,6 +249,47 @@ void Domain::readDomainFile(const std::string& filename) {
     }
 
     file.close();
+
+    // Validate that dimensions in file match settings
+    bool dimensionError = false;
+    
+    if (maxObstacleRows != nCellsY) {
+        std::cerr << "Error: ObstacleMarker section has " << maxObstacleRows 
+                  << " rows, but settings specify " << nCellsY << " cells in Y direction." << std::endl;
+        dimensionError = true;
+    }
+    if (maxObstacleCols > nCellsX) {
+        std::cerr << "Error: ObstacleMarker section has rows with up to " << maxObstacleCols 
+                  << " columns, but settings specify " << nCellsX << " cells in X direction." << std::endl;
+        dimensionError = true;
+    }
+    
+    if (maxRightRows != nCellsY) {
+        std::cerr << "Error: FacesRight section has " << maxRightRows 
+                  << " rows, but should have " << nCellsY << " rows." << std::endl;
+        dimensionError = true;
+    }
+    if (maxRightCols > nCellsX + 1) {
+        std::cerr << "Error: FacesRight section has rows with up to " << maxRightCols 
+                  << " columns, but should have " << (nCellsX + 1) << " columns." << std::endl;
+        dimensionError = true;
+    }
+    
+    if (maxTopRows != nCellsY + 1) {
+        std::cerr << "Error: FacesTop section has " << maxTopRows 
+                  << " rows, but should have " << (nCellsY + 1) << " rows." << std::endl;
+        dimensionError = true;
+    }
+    if (maxTopCols > nCellsX) {
+        std::cerr << "Error: FacesTop section has rows with up to " << maxTopCols 
+                  << " columns, but should have " << nCellsX << " columns." << std::endl;
+        dimensionError = true;
+    }
+    
+    if (dimensionError) {
+        std::cerr << "Fatal error: Domain file dimensions do not match settings. Exiting." << std::endl;
+        exit(1);
+    }
 
     // Create no-slip boundary condition codes if they don't exist yet
     double noSlipRightCode = -1.0;
@@ -338,6 +396,50 @@ void Domain::readDomainFile(const std::string& filename) {
         }
     }
 
+    // Validate that boundary conditions are set on all domain boundaries
+    bool boundaryError = false;
+    
+    // Check left boundary (i=0)
+    for (int j = 0; j < nCellsY; ++j) {
+        double faceCode = (*rightFacesBCGlobal_)(0, j);
+        if (faceCode == 0.0) {  // 0.0 is the code for '-' (no BC)
+            std::cerr << "Error: No boundary condition set at left domain boundary (i=0, j=" << j << ")" << std::endl;
+            boundaryError = true;
+        }
+    }
+    
+    // Check right boundary (i=nCellsX)
+    for (int j = 0; j < nCellsY; ++j) {
+        double faceCode = (*rightFacesBCGlobal_)(nCellsX, j);
+        if (faceCode == 0.0) {
+            std::cerr << "Error: No boundary condition set at right domain boundary (i=" << nCellsX << ", j=" << j << ")" << std::endl;
+            boundaryError = true;
+        }
+    }
+    
+    // Check bottom boundary (j=0)
+    for (int i = 0; i < nCellsX; ++i) {
+        double faceCode = (*topFacesBCGlobal_)(i, 0);
+        if (faceCode == 0.0) {
+            std::cerr << "Error: No boundary condition set at bottom domain boundary (i=" << i << ", j=0)" << std::endl;
+            boundaryError = true;
+        }
+    }
+    
+    // Check top boundary (j=nCellsY)
+    for (int i = 0; i < nCellsX; ++i) {
+        double faceCode = (*topFacesBCGlobal_)(i, nCellsY);
+        if (faceCode == 0.0) {
+            std::cerr << "Error: No boundary condition set at top domain boundary (i=" << i << ", j=" << nCellsY << ")" << std::endl;
+            boundaryError = true;
+        }
+    }
+    
+    if (boundaryError) {
+        std::cerr << "Fatal error: Missing boundary conditions on domain boundaries. Exiting." << std::endl;
+        exit(1);
+    }
+
     // make local cell lists
     int nCellsXLocal = partitioning_->nCellsLocal()[0];
     int nCellsYLocal = partitioning_->nCellsLocal()[1];
@@ -408,9 +510,5 @@ CellInfo Domain::createCellInfo(int iGlobal, int jGlobal, int iLocal, int jLocal
     cellInfo.faceTop = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal+1));
     cellInfo.faceBottom = topFaceBCInfo_.at((*topFacesBCGlobal_)(iGlobal, jGlobal));
     cellInfo.faceLeft = rightFaceBCInfo_.at((*rightFacesBCGlobal_)(iGlobal, jGlobal));
-    cellInfo.faceRight.isPartitionInnerFace = partitioning_->ownPartitionContainsRightBoundary() == false && (iLocal == nCellsXLocal - 1);
-    cellInfo.faceTop.isPartitionInnerFace = partitioning_->ownPartitionContainsTopBoundary() == false && (jLocal == nCellsYLocal - 1);
-    cellInfo.faceBottom.isPartitionInnerFace = partitioning_->ownPartitionContainsBottomBoundary() == false && (jLocal == 0);
-    cellInfo.faceLeft.isPartitionInnerFace = partitioning_->ownPartitionContainsLeftBoundary() == false && (iLocal == 0);
     return cellInfo;
 }

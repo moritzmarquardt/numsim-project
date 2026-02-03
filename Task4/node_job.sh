@@ -3,9 +3,9 @@
 #SBATCH --job-name=submission
 #SBATCH --output=result.txt
 #
-#SBATCH --ntasks=9
-#SBATCH --ntasks-per-node=3
-#SBATCH --time=10:00
+#SBATCH --ntasks=48
+#SBATCH --ntasks-per-node=48
+#SBATCH --time=30:00
 
 module use /usr/local.nfs/sgs/modulefiles
 module load gcc/10.2
@@ -17,7 +17,12 @@ module load cmake/3.18.2
 NODE_LIST=(1 2 4 6 8 10 12 14 16 18 20 22 24 48)
 
 # Loop through each node count
-for NODES in "${NODE_LIST[@]}"; do
-    echo "Running with $NODES nodes..."
-    srun -n $NODES ./build/numsim_parallel lid_driven_cavity.txt
+# for NODES in "${NODE_LIST[@]}"; do
+#     echo "Running with $NODES nodes..."
+#     srun -n $NODES ./build/numsim_parallel ../parameterFiles/benchmark.txt
+# done
+
+for R in "${NODE_LIST[@]}"; do
+    echo "Running with $R MPI ranks on 1 node..."
+    srun -N 1 -n $R --ntasks-per-node=$R --cpu-bind=cores ../build/numsim_parallel ../Task4/scenarios/bigldc.txt
 done

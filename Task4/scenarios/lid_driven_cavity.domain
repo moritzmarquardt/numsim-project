@@ -1,6 +1,5 @@
 ObstacleMarker: (20x20)
-X: obstacle;
--: fluid
+# X: obstacle; -: fluid
 --------------------
 --------------------
 --------------------

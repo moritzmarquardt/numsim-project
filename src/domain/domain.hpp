@@ -16,13 +16,23 @@
 
 class Domain {
     public:
+        /** 
+         * @brief Construct a new Domain object
+         * 
+         * @param settings Pointer to the Settings object
+         * @param partitioning Shared pointer to the Partitioning object
+         */
         Domain(const Settings* settings, std::shared_ptr<Partitioning> partitioning);
 
         /**
-         * Read domain file and set up the domain including all the lists of cells
+         * @brief Read domain file and set up the domain including all the lists of cells
+         * @param filename Name of the domain file
          */
         void readDomainFile(const std::string& filename);
 
+        /**
+         * @brief Create CellInfo for a given cell based on the arrays storing the obstacle mask and boundary conditions
+         */
         CellInfo createCellInfo(int iGlobal, int jGlobal, int iLocal, int jLocal, int nCellsXLocal, int nCellsYLocal);
 
         // getter for boundaryInfoListAll_
@@ -31,18 +41,27 @@ class Domain {
         }
 
         /**
-         * Get all cells with info that are fluid cells (no obstacle cells)
+         * @brief Get all cells with info that are fluid cells (no obstacle cells)
          */
         std::vector<CellInfo> getInfoListFluid() const {
             return *cellListFluidLocal_;
         }
+        /**
+         * @brief Get all red fluid cells with info
+         */
         std::vector<CellInfo> getRedListFluid() const {
             return *redListFluidLocal_;
         }
+        /**
+         * @brief Get all black fluid cells with info
+         */
         std::vector<CellInfo> getBlackListFluid() const {
             return *blackListFluidLocal_;
         }
-
+        /**
+         * @brief Get all ghost cells with info (cells adjacent to left and bottom partition boundaries)
+         * This includes only the cells that are outside of the domain.
+         */
         std::vector<CellInfo> getGhostList() const {
             return *ghostListLocal_;
         }
@@ -63,7 +82,6 @@ class Domain {
             return topFaceCodeToMarker_;
         }
 
-    //public:
         const Settings* settings_;
         std::shared_ptr<Partitioning> partitioning_;
         std::unique_ptr<Array2D> obstacleMaskGlobal_; // has size of global partition
