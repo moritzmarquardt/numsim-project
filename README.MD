@@ -1,16 +1,41 @@
-## numsim setup (follow docs of numsim lecture)
-- Install wsl with ubuntu
+# Numeric Simulation Project
+This is the repository for the numeric simulation project of the Numerical Simulation lecture at the University of Stuttgart. The project implements a 2D incompressible Navier-Stokes solver using the Finite Difference Method (FDM) with different solvers and parallelization techniques. 
+
+## Project Structure
+- **Task 1:** Serial computation of the Navier Stokes solver. See more in `Task1/`.
+- **Task 2:** Parallel computation using MPI. See more in `Task2/`.
+- **Task 3:** Predict the lid driven cavity flow by training a neural network on simulation data. See more in `Task3/`.
+- **Task 4 (final project):** Implementing generalised geometries and boundary conditions in parallel. See more in `Task4/`.
+
+## Quick start to run the code for different tasks:
+- **Task 1:**
+    - change ```main.cpp``` to use the computation.hpp class
+    - run ```./set_up_and_cmake.sh``` to setup and cmake the code
+    - run ```./build/numsim_parallel lid_driven_cavity.txt``` to run the serial code with the lid driven cavity scenario
+- **Task 2:** 
+    - change ```main.cpp``` to use the parallelComputation.hpp class
+    - run ```./set_up_and_cmake.sh``` to setup and cmake the code
+    - run ```mpirun -n 4 ./build/numsim_parallel lid_driven_cavity.txt``` to run on 4 processes with the lid driven cavity scenario
+- **Task 3:**
+    - How to train and use the model neural network can be found in the pdf files in the Task3/ folder.
+- **Task 4:**
+    - change ```main.cpp``` to use the domainComputation.hpp class
+    - run ```./set_up_and_cmake.sh``` to setup and cmake the code
+    - run ```mpirun -n 4 ./build/numsim_parallel Task4/scenarios/lid_driven_cavity.txt``` to run on 4 processes with the lid driven cavity scenario. For this, the lid driven cavity scenario file has to be in the Task4/scenarios/ folder as well as the .domain file.
+    - In the folder Task4/scenarios/ there are more scenarios to try out.
+
+## Workspace setup for WSL (follow docs of numsim lecture)
 - install g++ and gdp: ```sudo apt-get install build-essential gdb```
 - ```sudo apt install cmake```
 - ```sudo apt install libvtk9-dev```
 - ```sudo apt install qtbase5-dev qttools5-dev qttools5-dev-tools qt5-qmake libqt5opengl5-dev```
 - ```sudo apt install openjdk-17-jdk```
-- server jdk path to .bashrc : export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/jvm/java-17-openjdk-amd64/lib:/usr/lib/jvm/java-17-openjdk-amd64/lib/server
+- server jdk path to .bashrc : ```export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/lib/jvm/java-17-openjdk-amd64/lib:/usr/lib/jvm/java-17-openjdk-amd64/lib/server```
 - lib path to .profile at the end via sudo nano (same path) -> might be redundant
 - paraview installation via https://www.paraview.org/download/ 
 
 
-## To run the code:
+## Compile and run the code:
 - make sure the build/ folder is empty and exists
 - run ```cmake ..``` from build/ folder: This should create the Makefile in build/ folder
 - run ```make install``` from build/ folder: This compiles the code and creates the ./numsim executable in build/ folder
@@ -19,20 +44,8 @@ this should create the outputs in build/out/
 - cmake nur machen, wenn sich die CMakeLists.txt ändert, also wenn man dateien hinzufügt oder entfernt
 - wenn das nicht der fall ist einfach schnell machen: ```make install``` und dann ```./numsim``` oder direkt ```make install && ./numsim```
 
-## to inspect the code and performance
+## Inspect the code and performance (gprof):
 - put gprof in the cmakelist:
-
-# GPROF
-option(PROFILE "Add flags to profile the program with gprof." OFF)
-
-if(PROFILE)
-
-  SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -pg -g")
-
-  SET(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} -pg -g")
-
-endif()
-
 - compile with ```cmake -DPROFILE=ON ..```
 - make install
 - run like usual
@@ -41,31 +54,20 @@ endif()
     - on code line level: ```gprof -l numsim_parallel > out2.txt```
 - use tool to visualize this graphically
 
-## To run parallel code locally with mpirun:
-- Task 1: change ```main.cpp``` to use the computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```./build/numsim_parallel lid_driven_cavity.txt``` 
-- Task 2: change ```main.cpp``` to use the parallel computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```mpirun -n 4 ./build/numsim_parallel lid_driven_cavity.txt``` to run with 4 processes
-- Task 4: change ```main.cpp``` to use the domain computation class, run ```./set_up_and_cmake.sh``` to setup and cmake the code, then run ```mpirun -n 4 ./build/numsim_parallel Task4/scenarios/lid_driven_cavity.txt``` to run with 4 processes
-
 ## To run the code on the IPVS cluster:
-- to be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.
-- To compile the code on the cluster one has to use the module system there to load the required compilers and libraries.
-simcl1:[numsim-project] >module load gcc/10.2 openmpi/3.1.6-gcc-10.2 vtk/9.0.1 cmake/3.18.2
-simcl1:[numsim-project] >./set_up_and_cmake.sh
+To be able to access the ipvslogin.informatik.uni-stuttgart.de server you have to not only be in the uni eduroam network via the normal vpn, but in the informatics network via their vpn.
+1) get into the informatics network (vpn.informatik.uni-stuttgart.de)
+2) ssh into the ipvs cluster ```ssh -X [user]@ipvslogin.informatik.uni-stuttgart.de```
+3) ssh into simcl1 computer ```ssh -X simcl1```. This home directory is synced with the one on the login server. So you can access your files from both computers.
+4) Pull, compile and run the code on simcl1 just like on your local machine but using the module system to load the required compilers and libraries.
+    - To compile the code on the cluster one has to use the module system there to load the required compilers and libraries. ```module load gcc/10.2 openmpi/3.1.6-gcc-10.2 vtk/9.0.1 cmake/3.18.2```
+    - Use slurm to submit jobs as described in [https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html](https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html). Cheatsheet for slurm commands: ```sinfo```, ```squeue```, ```sbatch jobscript.sh```, ```scancel [jobID]```
 
 ### get into the informatics network:
 - one can use the normal cisco anyconnect vpn to connect to the informatics network
 - but you have to download the informatics network certificate from [http://www.zdi.uni-stuttgart.de/zdi/vpn/anyconnect.html](http://www.zdi.uni-stuttgart.de/zdi/vpn/anyconnect.html) (from within the informatics network for example by accessing the informatics computer pool)
 - then install the certificate in windows according to the instructions on the website.
 - to be able to access the informatics computer pool and then the vpn in vpn.informatik.uni-stuttgart.de you have to use you informatics login which is different from your ipvs cluster login
-
-### access the ipvs cluster:
-- once you are in the informatics network you can ssh into the ipvs cluster via ```ssh -X username@ipvslogin.informatik.uni-stuttgart.de``` as described in https://numsim-exercises.readthedocs.io/en/latest/exercise1/general_remarks.html
-- for this ssh you have to use the ipvs login
-- to then use the simcl1 computer inside that cluster use ```ssh -X simcl1```
-- then use slurm to submit jobs as described in [https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html](https://numsim-exercises.readthedocs.io/en/latest/exercise2/cluster.html) 
-
-### run python code and displaying matplotlib plots on local machine even tho the code is running on the wsl:
-- Install ```sudo apt install python3-tk```
 
 
 ## Helpful links:
