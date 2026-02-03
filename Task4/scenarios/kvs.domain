@@ -1,6 +1,5 @@
 ObstacleMarker: (60x20)
-X: obstacle;
--: fluid
+# X: obstacle; -: fluid
 ------------------------------------------------------------
 ------------------------------------------------------------
 ------------------------------------------------------------
@@ -21,7 +20,7 @@ X: obstacle;
 ------------------------------------------------------------
 ------------------------------------------------------------
 ------------------------------------------------------------
-# obstacles per default noslip unless anders definiert
+# obstacles per default noslip unless otherwise defined
 
 FacesRight: (61x20)
 # on right faces, only dirichlet u,v and neumann du/dx und dv/dx are allowed. so u_N, v_N, u_D, v_D
