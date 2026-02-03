@@ -21,8 +21,9 @@ This is the repository for the numeric simulation project of the Numerical Simul
 - **Task 4:**
     - change ```main.cpp``` to use the domainComputation.hpp class
     - run ```./set_up_and_cmake.sh``` to setup and cmake the code
-    - run ```mpirun -n 4 ./build/numsim_parallel Task4/scenarios/lid_driven_cavity.txt``` to run on 4 processes with the lid driven cavity scenario. For this, the lid driven cavity scenario file has to be in the Task4/scenarios/ folder as well as the .domain file.
+    - run ```mpirun -n 4 ./build/numsim_parallel Task4/scenarios/lid_driven_cavity.txt``` to run on 4 processes with the lid driven cavity scenario. For this, the lid driven cavity scenario file has to be in the Task4/scenarios/ folder as well as the .domain file. 
     - In the folder Task4/scenarios/ there are more scenarios to try out.
+    - The .domain file with the geometry and boundary conditions is always specified in the scenario text file. This means only the scenario text file has to be given as input to the executable.
 
 ## Workspace setup for WSL (follow docs of numsim lecture)
 - install g++ and gdp: ```sudo apt-get install build-essential gdb```
